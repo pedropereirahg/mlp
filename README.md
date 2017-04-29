@@ -1,2 +1,2 @@
 # mlp
-Implements an mlp in python.
+Implements an mlp in Python.
