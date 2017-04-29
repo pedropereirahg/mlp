@@ -73,7 +73,7 @@ def bis_mlp(X,d,A,B,dJdA,dJdB,N):
         #dJdAaux,dJdBaux = gradiente(X,d,np.around(Aaux,decimals=4),np.around(Baux,decimals=4),N)
         g = vetor_concat(dJdAaux,dJdBaux)
         hl = np.dot(np.transpose(g),dir)
-    
+
     alfa_m = (alfa_l + alfa_u)/2
     Aaux = A - alfa_u*dJdA;
     Baux = B - alfa_u*dJdB;
