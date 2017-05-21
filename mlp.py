@@ -87,47 +87,77 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
 
 if __name__ == '__main__':
 
-    if "INPUT" in os.environ:
-        f = open(os.environ["INPUT"], 'r')
-        X = [map(int, line.split(',')) for line in f]
+    url_dataset = "dataset/"
+    url_test = "testes/"
+    url_learning = "treinamento/"
+    url_sample = "sample/"
 
-        # Set X, d , H
-        # X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-        d = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
-        h = 3
+    pixels_per_celL = 8
+    cells_per_block = 1
+    orientations = 9
+    run = ",,"
 
-        # Cria N, ne e ns
-        aux = np.shape(X)
-        N = aux[0]
-        ne = aux[1]
-        aux = np.shape(d)
+    if "PIXELS_PER_CELL" in os.environ:
+        pixels_per_celL = int(os.environ["PIXELS_PER_CELL"])
 
-        ns = aux[1]
+    if "CELLS_PER_BLOCK" in os.environ:
+        cells_per_block = int(os.environ["CELLS_PER_BLOCK"])
 
-        # Cria os pesos aleatorios para A e B
-        A = np.random.rand(h, (ne + 1))
-        B = np.random.rand(ns, (h + 1))
+    if "ORIENTATIONS" in os.environ:
+        orientations = int(os.environ["ORIENTATIONS"])
 
-        # Feedfoward para a saida
-        Y = feed_forward(X, A, B, N)
-        error = Y - d
-        EQM = (1. / N) * ((error * error).sum())
+    if "RUN" in os.environ:
+        run = os.environ["RUN"]
 
-        i = 0
-        alfa = 1
+    run = run.split(",")
 
-        vEQM = []
-        vEQM.append(EQM)
+    url_result = "build/PCP-" + repr(pixels_per_celL) + "-CPB-" + repr(cells_per_block) + "/"
 
-        while EQM > 1.0e-5 and i < 10000:
-            i = i + 1
-            dJdA, dJdB = gradient(X, d, A, B, N)
-            alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
-            A = A - alfa * dJdA
-            B = B - alfa * dJdB
+    for layer in run:
+        # Set path
+        os.chdir(url_result + layer.lower() + "/HOG_" + layer.lower())
+
+        for file_name in os.listdir("."):
+            f = open(file_name, 'r')
+            X = [map(float, line.split(',')) for line in f]
+
+            # Set X, d , H
+            # X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+            d = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
+            h = 3
+
+            # Cria N, ne e ns
+            aux = np.shape(X)
+            N = aux[0]
+            ne = aux[1]
+            aux = np.shape(d)
+
+            ns = aux[1]
+
+            # Cria os pesos aleatorios para A e B
+            A = np.random.rand(h, (ne + 1))
+            B = np.random.rand(ns, (h + 1))
+
+            # Feedfoward para a saida
             Y = feed_forward(X, A, B, N)
             error = Y - d
             EQM = (1. / N) * ((error * error).sum())
+
+            i = 0
+            alfa = 1
+
+            vEQM = []
             vEQM.append(EQM)
-        Y = feed_forward(X, A, B, N)
-        print(Y)
+
+            while EQM > 1.0e-5 and i < 10000:
+                i = i + 1
+                dJdA, dJdB = gradient(X, d, A, B, N)
+                alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
+                A = A - alfa * dJdA
+                B = B - alfa * dJdB
+                Y = feed_forward(X, A, B, N)
+                error = Y - d
+                EQM = (1. / N) * ((error * error).sum())
+                vEQM.append(EQM)
+            Y = feed_forward(X, A, B, N)
+            print(Y)
