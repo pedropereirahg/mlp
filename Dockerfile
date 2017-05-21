@@ -1,6 +1,6 @@
 FROM python:2.7-slim
 
-FROM pedrogoncalvesk/hog:latest
+FROM pedrogoncalvesk/hog
 
 ENV RUN SAMPLE
 
