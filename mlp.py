@@ -91,9 +91,9 @@ if __name__ == '__main__':
         f = open(os.environ["INPUT"], 'r')
         X = [map(int, line.split(',')) for line in f]
 
-        # Set X, d ,H
+        # Set X, d , H
         # X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
-        d = np.array([[0], [1], [1], [0]])
+        d = np.array([[0, 0, 1], [0, 1, 0], [1, 0, 0]])
         h = 3
 
         # Cria N, ne e ns
