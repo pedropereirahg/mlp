@@ -1,13 +1,13 @@
 FROM python:2.7-slim
 
-COPY requirements.txt /app/requirements.txt
+COPY requirements.txt /mlp/requirements.txt
 
-WORKDIR /app
+WORKDIR /mlp
 
 RUN pip install -U pip setuptools
 
 RUN pip install -r requirements.txt
 
-ADD . /app
+ADD . /mlp
 
 CMD ["python", "mlp.py"]
