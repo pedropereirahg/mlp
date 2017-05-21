@@ -2,71 +2,68 @@
 
 import numpy as np
 from scipy.special import expit
+import os
 
 
-def feed_foward(X, A, B, N):
-    Zin = np.dot((np.append(np.ones((N, 1)), X, 1)), (np.transpose(A)))
-    Z = expit(Zin)
-    # Z = np.float64(1./(1+np.exp(-Zin)))
-    Yin = np.dot((np.append(np.ones((N, 1)), Z, 1)), (np.transpose(B)))
-    Y = Yin  # Nao tem segunda funcao de ativiacao, arrumar pro EP
-    return Y
+def feed_forward(x, a, b, n):
+    z_in = np.dot((np.append(np.ones((n, 1)), x, 1)), (np.transpose(a)))
+    z = expit(z_in)
+    y_in = np.dot((np.append(np.ones((n, 1)), z, 1)), (np.transpose(b)))
+    y = y_in  # Nao tem segunda funcao de ativiacao, arrumar pro EP
+    return y
 
 
-def gradiente(X, d, A, B, N):
-    Zin = np.dot((np.append(np.ones((N, 1)), X, 1)), (np.transpose(A)))
-    # Z = np.float64(1./(1+np.exp(-Zin)))
-    Z = expit(Zin)
-    Yin = np.dot((np.append(np.ones((N, 1)), Z, 1)), (np.transpose(B)))
-    Y = Yin  # Nao tem segunda funcao de ativiacao, arrumar pro EP
-    erro = Y - d
+def gradient(x, d, a, b, n):
+    z_in = np.dot((np.append(np.ones((n, 1)), x, 1)), (np.transpose(a)))
+    z = expit(z_in)
+    y_in = np.dot((np.append(np.ones((n, 1)), z, 1)), (np.transpose(b)))
+    y = y_in  # Nao tem segunda funcao de ativiacao, arrumar pro EP
+    error = y - d
 
-    grad_aux = np.dot((np.transpose(erro)), (np.append(np.ones((N, 1)), Z, 1)))
-    # Nao tem segunda funcao de ativiacao, arrumar pro EP
+    grad_aux = np.dot((np.transpose(error)), (np.append(np.ones((n, 1)), z, 1))) # Nao tem segunda funcao de ativiacao, arrumar pro EP
 
-    dJdB = (1. / N) * (grad_aux)
-    dJdZ = np.dot(erro, B)
-    dJdZ = np.delete(dJdZ, 0, 1)
+    d_jd_b = (1. / n) * grad_aux
+    d_jd_z = np.dot(error, b)
+    d_jd_z = np.delete(d_jd_z, 0, 1)
 
-    grad_aux = np.dot(np.transpose((dJdZ) * (1 - Z) * Z), np.append(np.ones((N, 1)), X, 1))
-    dJdA = (1. / N) * grad_aux
-    return dJdA, dJdB
+    grad_aux = np.dot(np.transpose(d_jd_z * (1 - z) * z), np.append(np.ones((n, 1)), x, 1))
+    d_jd_a = (1. / n) * grad_aux
+    return d_jd_a, d_jd_b
 
 
-def vetor_concat(a, b):
+def vet_concat(a, b):
     a = np.reshape(a, (-1, 1), 'F')
     b = np.reshape(b, (-1, 1), 'F')
-    aux = np.concatenate((a, b), axis=0)
-    return aux
+    return np.concatenate((a, b), axis=0)
 
 
-def bis_mlp(X, d, A, B, dJdA, dJdB, N):
-    dir = vetor_concat(-dJdA, -dJdB)
+def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
+    dir = vet_concat(-d_jd_a, -d_jd_b)
 
     alfa_l = 0
     alfa_u = np.random.uniform(0, 1, 1)
 
-    Aaux = A - alfa_u * dJdA
-    Baux = B - alfa_u * dJdB
-    dJdAaux, dJdBaux = gradiente(X, d, Aaux, Baux, N)
+    Aaux = a - alfa_u * d_jd_a
+    Baux = b - alfa_u * d_jd_b
+    dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
 
-    g = vetor_concat(dJdAaux, dJdBaux)
+    g = vet_concat(dJdAaux, dJdBaux)
     hl = np.dot(np.transpose(g), dir)
 
     while (hl < 0):
         alfa_u = 2 * alfa_u
-        Aaux = A - alfa_u * dJdA;
-        Baux = B - alfa_u * dJdB;
-        dJdAaux, dJdBaux = gradiente(X, d, Aaux, Baux, N)
-        g = vetor_concat(dJdAaux, dJdBaux)
+        Aaux = a - alfa_u * d_jd_a;
+        Baux = b - alfa_u * d_jd_b;
+        dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
+        g = vet_concat(dJdAaux, dJdBaux)
         hl = np.dot(np.transpose(g), dir)
 
     alfa_m = (alfa_l + alfa_u) / 2
-    Aaux = A - alfa_u * dJdA;
-    Baux = B - alfa_u * dJdB;
-    dJdAaux, dJdBaux = gradiente(X, d, Aaux, Baux, N)
+    Aaux = a - alfa_u * d_jd_a;
+    Baux = b - alfa_u * d_jd_b;
+    dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
 
-    g = vetor_concat(dJdAaux, dJdBaux)
+    g = vet_concat(dJdAaux, dJdBaux)
     hl = np.dot(np.transpose(g), dir)
 
     nit = 0;
@@ -79,53 +76,58 @@ def bis_mlp(X, d, A, B, dJdA, dJdB, N):
         else:
             alfa_l = alfa_m
         alfa_m = (alfa_l + alfa_u) / 2;
-        Aaux = A - alfa_m * dJdA;
-        Baux = B - alfa_m * dJdB;
-        dJdAaux, dJdBaux = gradiente(X, d, Aaux, Baux, N)
-        g = vetor_concat(dJdAaux, dJdBaux)
+        Aaux = a - alfa_m * d_jd_a;
+        Baux = b - alfa_m * d_jd_b;
+        dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
+        g = vet_concat(dJdAaux, dJdBaux)
         hl = np.dot(np.transpose(g), dir)
     alfa = alfa_m
     return alfa
 
 
-# main
-# Seta X,d ,H
-X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])  # Setar o X
-d = np.array([[0], [1], [1], [0]])
-h = 3
+if __name__ == '__main__':
 
-# Cria N, ne e ns
-aux = np.shape(X)
-N = aux[0]
-ne = aux[1]
-aux = np.shape(d)
+    if "INPUT" in os.environ:
+        f = open(os.environ["INPUT"], 'r')
+        X = [map(int, line.split(',')) for line in f]
 
-ns = aux[1]
+        # Set X, d ,H
+        # X = np.array([[0, 0], [0, 1], [1, 0], [1, 1]])
+        d = np.array([[0], [1], [1], [0]])
+        h = 3
 
-# Cria os pesos aleatorios para A e B
-A = np.random.rand(h, (ne + 1))
-B = np.random.rand(ns, (h + 1))
+        # Cria N, ne e ns
+        aux = np.shape(X)
+        N = aux[0]
+        ne = aux[1]
+        aux = np.shape(d)
 
-# Feedfoward para a saida
-Y = feed_foward(X, A, B, N)
-erro = Y - d
-EQM = (1. / N) * ((erro * erro).sum())
+        ns = aux[1]
 
-i = 0
-alfa = 1
+        # Cria os pesos aleatorios para A e B
+        A = np.random.rand(h, (ne + 1))
+        B = np.random.rand(ns, (h + 1))
 
-vEQM = []
-vEQM.append(EQM)
+        # Feedfoward para a saida
+        Y = feed_forward(X, A, B, N)
+        error = Y - d
+        EQM = (1. / N) * ((error * error).sum())
 
-while EQM > 1.0e-5 and i < 10000:
-    i = i + 1
-    dJdA, dJdB = gradiente(X, d, A, B, N)
-    alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
-    A = A - alfa * dJdA
-    B = B - alfa * dJdB
-    Y = feed_foward(X, A, B, N)
-    erro = Y - d
-    EQM = (1. / N) * ((erro * erro).sum())
-    vEQM.append(EQM)
-Y = feed_foward(X, A, B, N)
-print(Y)
+        i = 0
+        alfa = 1
+
+        vEQM = []
+        vEQM.append(EQM)
+
+        while EQM > 1.0e-5 and i < 10000:
+            i = i + 1
+            dJdA, dJdB = gradient(X, d, A, B, N)
+            alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
+            A = A - alfa * dJdA
+            B = B - alfa * dJdB
+            Y = feed_forward(X, A, B, N)
+            error = Y - d
+            EQM = (1. / N) * ((error * error).sum())
+            vEQM.append(EQM)
+        Y = feed_forward(X, A, B, N)
+        print(Y)
