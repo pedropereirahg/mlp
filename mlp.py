@@ -1,9 +1,9 @@
 # http://mathesaurus.sourceforge.net/matlab-python-xref.pdf
 
 import numpy as np
-from scipy.special import expit
 import os
-import matplotlib.pyplot as plt
+from scipy.special import expit
+from sklearn.model_selection import KFold
 
 
 def configs(path):
@@ -238,6 +238,13 @@ if __name__ == '__main__':
 
             if RUN == "TREINAMENTO":  # CROSS VALIDATION
 
+                kf = KFold(n_splits=5)
+
+                path_train = url + "treinamento/HOG_treinamento"
+                path_tests = url + "testes/HOG_testes"
+
+                # for train_file, test_file in kf.split(os.listdir(path_train) + os.listdir(path_tests)):
+                # for train_file, test_file in kf.split(os.listdir(path_train)):
                 for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
                     f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
                     X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
