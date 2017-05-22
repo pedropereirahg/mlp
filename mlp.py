@@ -116,8 +116,15 @@ if __name__ == '__main__':
     url_result = "build/PCP-" + repr(pixels_per_celL) + "-CPB-" + repr(cells_per_block) + "/"
 
     for layer in run:
+
         # Set path
         os.chdir(url_result + layer.lower() + "/HOG_" + layer.lower())
+
+        # if layer == "TREINAMENTO":
+        #     X = ""  # CROSS VALIDATION
+        #
+        # elif layer == "TESTES":
+        #     X = ""
 
         for file_name in os.listdir("."):
             f = open(file_name, 'r')
@@ -138,8 +145,8 @@ if __name__ == '__main__':
             aux = np.shape(d)
             ns = aux[1]
 
-            A = np.random.rand(h, (ne + 1))
-            B = np.random.rand(ns, (h + 1))
+            A = np.random.rand(h, (ne + 1))  # FIXAR
+            B = np.random.rand(ns, (h + 1))  # FIXAR
 
             # Feedfoward para a saida
             Y = feed_forward(X, A, B, N)
