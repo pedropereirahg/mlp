@@ -11,13 +11,16 @@ def configs(path):
 
     # defaults
     mlp_h = 3
+    mlp_ns = 3
+    iter_max = 1000
+    alfa = 1.
     mlp_letter_z = [0, 1, 0]
     mlp_letter_s = [0, 1, 0]
     mlp_letter_x = [1, 0, 0]
 
     f = open(path, 'r')
     lines = f.read()
-    lines = lines.split("\n")
+    lines = lines.split("\n")[1:]
     for line in lines:
         if not line:
             continue
@@ -29,38 +32,93 @@ def configs(path):
     f.close()
 
     # Set H default
-    if configs["MLP_H"]:
+    if "MLP_H" in configs:
         configs["MLP_H"] = int(configs["MLP_H"])
     else:
         f = open(path, 'a')
         f.write("MLP_H : %s\n" % str(mlp_h))
         f.close()
+        configs["MLP_H"] = mlp_h
+
+    # Set NS default
+    if "MLP_NS" in configs:
+        configs["MLP_NS"] = int(configs["MLP_NS"])
+    else:
+        f = open(path, 'a')
+        f.write("MLP_NS : %s\n" % str(mlp_ns))
+        f.close()
+        configs["MLP_NS"] = mlp_ns
+
+    # Set ITER_MAX default
+    if "MLP_ITER_MAX" in configs:
+        configs["MLP_ITER_MAX"] = int(configs["MLP_ITER_MAX"])
+    else:
+        f = open(path, 'a')
+        f.write("MLP_ITER_MAX : %s\n" % str(iter_max))
+        f.close()
+        configs["MLP_ITER_MAX"] = iter_max
+
+    # Set ALFA default
+    if "MLP_ALFA" in configs:
+        configs["MLP_ALFA"] = float(configs["MLP_ALFA"])
+    else:
+        f = open(path, 'a')
+        f.write("MLP_ALFA : %s\n" % str(alfa))
+        f.close()
+        configs["MLP_ALFA"] = alfa
 
     # Set LETTER_Z default
-    if configs["MLP_LETTER_Z"]:
+    if "MLP_LETTER_Z" in configs:
         configs["MLP_LETTER_Z"] = map(int, configs["MLP_LETTER_Z"].split(","))
     else:
         f = open(path, 'a')
         f.write("MLP_LETTER_Z : %s\n" % ",".join(map(str, mlp_letter_z)))
         f.close()
+        configs["MLP_LETTER_Z"] = mlp_letter_z
 
     # Set LETTER_S default
-    if configs["MLP_LETTER_S"]:
+    if "MLP_LETTER_S" in configs:
         configs["MLP_LETTER_S"] = map(int, configs["MLP_LETTER_S"].split(","))
     else:
         f = open(path, 'a')
         f.write("MLP_LETTER_S : %s\n" % ",".join(map(str, mlp_letter_s)))
         f.close()
+        configs["MLP_LETTER_S"] = mlp_letter_s
 
     # Set LETTER_X default
-    if configs["MLP_LETTER_X"]:
+    if "MLP_LETTER_X" in configs:
         configs["MLP_LETTER_X"] = map(int, configs["MLP_LETTER_X"].split(","))
     else:
         f = open(path, 'a')
         f.write("MLP_LETTER_X : %s\n" % ",".join(map(str, mlp_letter_x)))
         f.close()
+        configs["MLP_LETTER_X"] = mlp_letter_x
+
+    mlp_rand_a = np.random.rand(configs["MLP_H"],  (configs["MLP_X_LENGTH"] + 1))
+    mlp_rand_b = np.random.rand(configs["MLP_NS"], (configs["MLP_H"] + 1))
+
+    # Set RAND_A default
+    if "MLP_RAND_A" in configs:
+        configs["MLP_RAND_A"] = [x.split(",") for x in configs["MLP_RAND_A"].split(";")]
+        configs["MLP_RAND_A"] = np.float_(configs["MLP_RAND_A"])
+    else:
+        f = open(path, 'a')
+        f.write("MLP_RAND_A : %s\n" % ';'.join(','.join('%f' % x for x in y) for y in mlp_rand_a))
+        f.close()
+        configs["MLP_RAND_A"] = mlp_rand_a
+
+    # Set RAND_A default
+    if "MLP_RAND_B" in configs:
+        configs["MLP_RAND_B"] = [x.split(",") for x in configs["MLP_RAND_B"].split(";")]
+        configs["MLP_RAND_B"] = np.float_(configs["MLP_RAND_B"])
+    else:
+        f = open(path, 'a')
+        f.write("MLP_RAND_B : %s\n" % ';'.join(','.join('%f' % x for x in y) for y in mlp_rand_b))
+        f.close()
+        configs["MLP_RAND_B"] = mlp_rand_b
 
     return configs
+
 
 def feed_forward(x, a, b, n):
     z_in = np.dot((np.append(np.ones((n, 1)), x, 1)), (np.transpose(a)))
@@ -154,7 +212,7 @@ if __name__ == '__main__':
     RUN = ""
 
     if "FOLDER" in os.environ:
-        FOLDER = int(os.environ["FOLDER"])
+        FOLDER = os.environ["FOLDER"]
 
     if "RUN" in os.environ:
         RUN = os.environ["RUN"]
@@ -164,30 +222,25 @@ if __name__ == '__main__':
         # Set path
         os.chdir(url_build)
         for content in os.listdir("."):
+            content = content + "/"
 
             # Define baseline
-            url = url_build
+            url = ""
             if FOLDER:
                 url += FOLDER + "/"
                 if content != url:
-                    break
+                    continue
             else:
                 url += content
 
             # Define configs
             CONFIGS = configs(url + RUN.lower() + "/config.txt")
 
-            # N = np.shape(X)[0]
-            # ne = CONFIGS["MLP_X_LEN"]
-            # ns = np.shape(d)[1]
-
-            A = np.random.rand(H, (ne + 1))  # FIXAR
-            B = np.random.rand(ns, (H + 1))  # FIXAR
-
-            if RUN == "TREINAMENTO": # CROSS VALIDATION
+            if RUN == "TREINAMENTO":  # CROSS VALIDATION
 
                 for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
-                    X = np.loadtxt(file_name)
+                    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
+                    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
                     X = X.reshape(1, len(X))
 
                     if "train_5a" in file_name:
@@ -197,31 +250,33 @@ if __name__ == '__main__':
                     elif "train_58" in file_name:
                         d = np.array([CONFIGS["MLP_LETTER_X"]])
 
-                    H = CONFIGS["MLP_LETTER_Z"]
+                    H = CONFIGS["MLP_H"]
                     N = np.shape(X)[0]
                     ne = CONFIGS["MLP_X_LENGTH"]
-                    ns = np.shape(d)[1]
+                    ns = CONFIGS["MLP_NS"]
 
-                    A = np.random.rand(H, (ne + 1))  # FIXAR
-                    B = np.random.rand(ns, (H + 1))  # FIXAR
+                    A = CONFIGS["MLP_RAND_A"]
+                    B = CONFIGS["MLP_RAND_B"]
+
+                    ITER_MAX = CONFIGS["MLP_ITER_MAX"]
+                    ALFA = CONFIGS["MLP_ALFA"]
 
                     # Feedfoward para a saida
                     Y = feed_forward(X, A, B, N)
                     error = Y - d
                     EQM = (1. / N) * ((error * error).sum())
 
-                    i = 0
-                    alfa = 1
+                    iter = 0
 
                     vEQM = []
                     vEQM.append(EQM)
 
-                    while EQM > 1.0e-5 and i < 10000:
-                        i = i + 1
+                    while EQM > 1.0e-5 and iter < ITER_MAX:
+                        iter = iter + 1
                         dJdA, dJdB = gradient(X, d, A, B, N)
-                        alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
-                        A = A - alfa * dJdA
-                        B = B - alfa * dJdB
+                        ALFA = bis_mlp(X, d, A, B, dJdA, dJdB, N)
+                        A = A - ALFA * dJdA
+                        B = B - ALFA * dJdB
                         Y = feed_forward(X, A, B, N)
                         error = Y - d
                         EQM = (1. / N) * ((error * error).sum())
