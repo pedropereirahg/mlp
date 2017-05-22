@@ -13,7 +13,7 @@ def configs(path):
     mlp_h = 3
     mlp_ns = 3
     iter_max = 1000
-    alfa = 1.
+    alfa = 1
     mlp_letter_z = [0, 1, 0]
     mlp_letter_s = [0, 1, 0]
     mlp_letter_x = [1, 0, 0]
@@ -94,28 +94,39 @@ def configs(path):
         f.close()
         configs["MLP_LETTER_X"] = mlp_letter_x
 
-    mlp_rand_a = np.random.rand(configs["MLP_H"],  (configs["MLP_X_LENGTH"] + 1))
-    mlp_rand_b = np.random.rand(configs["MLP_NS"], (configs["MLP_H"] + 1))
+    # Firstly that is random
+    mlp_a = np.random.rand(configs["MLP_H"],  (configs["MLP_X_LENGTH"] + 1))
+    mlp_b = np.random.rand(configs["MLP_NS"], (configs["MLP_H"] + 1))
+    average_error = []
 
-    # Set RAND_A default
-    if "MLP_RAND_A" in configs:
-        configs["MLP_RAND_A"] = [x.split(",") for x in configs["MLP_RAND_A"].split(";")]
-        configs["MLP_RAND_A"] = np.float_(configs["MLP_RAND_A"])
+    # Set A default
+    if "MLP_A" in configs:
+        configs["MLP_A"] = [x.split(",") for x in configs["MLP_A"].split(";")]
+        configs["MLP_A"] = np.float_(configs["MLP_A"])
     else:
         f = open(path, 'a')
-        f.write("MLP_RAND_A : %s\n" % ';'.join(','.join('%f' % x for x in y) for y in mlp_rand_a))
+        f.write("MLP_A : %s\n" % ';'.join(','.join('%f' % x for x in y) for y in mlp_a))
         f.close()
-        configs["MLP_RAND_A"] = mlp_rand_a
+        configs["MLP_A"] = mlp_a
 
-    # Set RAND_A default
-    if "MLP_RAND_B" in configs:
-        configs["MLP_RAND_B"] = [x.split(",") for x in configs["MLP_RAND_B"].split(";")]
-        configs["MLP_RAND_B"] = np.float_(configs["MLP_RAND_B"])
+    # Set B default
+    if "MLP_B" in configs:
+        configs["MLP_B"] = [x.split(",") for x in configs["MLP_B"].split(";")]
+        configs["MLP_B"] = np.float_(configs["MLP_B"])
     else:
         f = open(path, 'a')
-        f.write("MLP_RAND_B : %s\n" % ';'.join(','.join('%f' % x for x in y) for y in mlp_rand_b))
+        f.write("MLP_B : %s\n" % ';'.join(','.join('%f' % x for x in y) for y in mlp_b))
         f.close()
-        configs["MLP_RAND_B"] = mlp_rand_b
+        configs["MLP_B"] = mlp_b
+
+    # Set AVERAGE_ERROR default
+    if "MLP_AVERAGE_ERROR" in configs:
+        configs["MLP_AVERAGE_ERROR"] = map(int, configs["MLP_AVERAGE_ERROR"].split(","))
+    else:
+        f = open(path, 'a')
+        f.write("MLP_AVERAGE_ERROR : %s\n" % ",".join(map(str, average_error)))
+        f.close()
+        configs["MLP_AVERAGE_ERROR"] = average_error
 
     return configs
 
@@ -202,6 +213,37 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
     return alfa
 
 
+def save(path, A, B, average_error, CONFIGS):
+    fr = open(path, "r")
+
+    line = fr.readline()
+    lines = []
+    while line:
+        if "MLP_A : " in line:
+            line = line.split(" : ")
+            line[1] = ("%s\n" % ';'.join(','.join('%f' % x for x in y) for y in A))
+            line = " : ".join("%s" % str(x) for x in line)
+        elif "MLP_B : " in line:
+            line = line.split(" : ")
+            line[1] = ("%s\n" % ';'.join(','.join('%f' % x for x in y) for y in B))
+            line = " : ".join("%s" % str(x) for x in line)
+        elif "MLP_AVERAGE_ERROR : " in line:
+            line = line.split(" : ")
+            line[1] = ("%s\n" % ",".join(map(str, average_error)))
+            line = " : ".join("%s" % str(x) for x in line)
+        lines.append(line)
+        line = fr.readline()
+    fr.close()
+
+    fw = open(path, "w")
+    fw.writelines(lines)
+    fw.close()
+
+    CONFIGS["MLP_A"] = A
+    CONFIGS["MLP_B"] = B
+    CONFIGS["MLP_AVERAGE_ERROR"] = average_error
+    return CONFIGS
+
 if __name__ == '__main__':
 
     url_build = "build/"
@@ -236,6 +278,8 @@ if __name__ == '__main__':
             # Define configs
             CONFIGS = configs(url + RUN.lower() + "/config.txt")
 
+            average_error = CONFIGS["MLP_AVERAGE_ERROR"]
+
             if RUN == "TREINAMENTO":  # CROSS VALIDATION
 
                 kf = KFold(n_splits=5)
@@ -262,8 +306,8 @@ if __name__ == '__main__':
                     ne = CONFIGS["MLP_X_LENGTH"]
                     ns = CONFIGS["MLP_NS"]
 
-                    A = CONFIGS["MLP_RAND_A"]
-                    B = CONFIGS["MLP_RAND_B"]
+                    A = CONFIGS["MLP_A"]
+                    B = CONFIGS["MLP_B"]
 
                     ITER_MAX = CONFIGS["MLP_ITER_MAX"]
                     ALFA = CONFIGS["MLP_ALFA"]
@@ -289,6 +333,10 @@ if __name__ == '__main__':
                         EQM = (1. / N) * ((error * error).sum())
                         vEQM.append(EQM)
                     Y = feed_forward(X, A, B, N)
+
+                    average_error.append(np.average(vEQM))
+
+                    CONFIGS = save(url + RUN.lower() + "/config.txt", A, B, average_error, CONFIGS)
 
                     print("Y: {}".format(np.argmax(Y)))
                     print("D: {}\n".format(d))
