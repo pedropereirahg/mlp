@@ -306,7 +306,7 @@ if __name__ == '__main__':
                 url += content
 
             # Define configs
-            CONFIGS = configs(url + RUN.lower() + "/config.txt")
+            CONFIGS = configs(url + "/config.txt")
 
             if RUN == "TREINAMENTO":  # CROSS VALIDATION DO IT!!!!
 
@@ -371,7 +371,7 @@ if __name__ == '__main__':
 
                     average_error.append(np.average(vEQM))
 
-                    CONFIGS = save_train(url + RUN.lower() + "/config.txt", A, B, average_error, CONFIGS)
+                    CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS)
 
                     print("Y: {}".format(np.argmax(Y)))
                     print("D: {}\n".format(d))
@@ -413,9 +413,7 @@ if __name__ == '__main__':
 
                     average_error.append(np.average(vEQM))
 
-                    # CONFIGS = save(url + RUN.lower() + "/config.txt", A, B, average_error, CONFIGS)
-
-                    CONFIGS = save_test(url + RUN.lower() + "/config.txt", average_error, CONFIGS)
+                    CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS)
 
                     print("Y: {}".format(np.argmax(Y)))
                     print("D: {}\n".format(d))
