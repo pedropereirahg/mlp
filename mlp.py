@@ -6,14 +6,39 @@ from scipy.special import expit
 from sklearn.model_selection import KFold
 
 
+# def errors(path):
+#     errors = {}
+#
+#     # Set AVERAGE_ERROR default
+#     if "MLP_AVERAGE_ERROR" in configs:
+#         configs["MLP_AVERAGE_ERROR"] = map(float, configs["MLP_AVERAGE_ERROR"].split(","))
+#     else:
+#         f = open(path, 'a')
+#         f.write("MLP_AVERAGE_ERROR : %s\n" % ",".join(map(str, average_error)))
+#         f.close()
+#         configs["MLP_AVERAGE_ERROR"] = average_error
+#
+#     # Set AVERAGE_ERROR_TEST default
+#     if "MLP_AVERAGE_ERROR_TEST" in configs:
+#         configs["MLP_AVERAGE_ERROR_TEST"] = map(float, configs["MLP_AVERAGE_ERROR_TEST"].split(","))
+#     else:
+#         f = open(path, 'a')
+#         f.write("MLP_AVERAGE_ERROR_TEST : %s\n" % ",".join(map(str, average_error)))
+#         f.close()
+#         configs["MLP_AVERAGE_ERROR_TEST"] = average_error
+#
+#     return errors
+
+
 def configs(path):
     configs = {}
 
     # defaults
     mlp_h = 3
     mlp_ns = 3
-    iter_max = 1000
-    alfa = 1
+    # iter_max = 1000
+    iter_max = 10
+    alfa = 0.9
     mlp_letter_z = [0, 1, 0]
     mlp_letter_s = [0, 1, 0]
     mlp_letter_x = [1, 0, 0]
@@ -222,59 +247,49 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
     return alfa
 
 
-def train(file_name, url, average_error, CONFIGS, RUN, save_disk):
-    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
-    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
-    X = X.reshape(1, len(X))
+def train(group, url, all_files, CONFIGS, RUN, save_disk):
 
-    if "train_5a" in file_name:
-        d = np.array([CONFIGS["MLP_LETTER_Z"]])
-    elif "train_53" in file_name:
-        d = np.array([CONFIGS["MLP_LETTER_S"]])
-    elif "train_58" in file_name:
-        d = np.array([CONFIGS["MLP_LETTER_X"]])
+    error_kfold = []
 
-    H = CONFIGS["MLP_H"]
-    N = np.shape(X)[0]
-    ne = CONFIGS["MLP_X_LENGTH"]
-    ns = CONFIGS["MLP_NS"]
+    for file_name in group:
+        f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name], "r")
+        current_file = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name])
+        current_file = current_file.reshape(1, len(current_file))
 
-    A = CONFIGS["MLP_A"]
-    B = CONFIGS["MLP_B"]
+        if "train_5a" in all_files[file_name]:
+            d = np.array([CONFIGS["MLP_LETTER_Z"]])
+        elif "train_53" in all_files[file_name]:
+            d = np.array([CONFIGS["MLP_LETTER_S"]])
+        elif "train_58" in all_files[file_name]:
+            d = np.array([CONFIGS["MLP_LETTER_X"]])
 
-    ITER_MAX = CONFIGS["MLP_ITER_MAX"]
-    ALFA = CONFIGS["MLP_ALFA"]
+        H = CONFIGS["MLP_H"]
+        N = np.shape(current_file)[0]
+        ne = CONFIGS["MLP_X_LENGTH"]
+        ns = CONFIGS["MLP_NS"]
 
-    # Feedfoward para a saida
-    Y = feed_forward(X, A, B, N)
-    error = Y - d
-    EQM = (1. / N) * ((error * error).sum())
+        A = CONFIGS["MLP_A"]
+        B = CONFIGS["MLP_B"]
 
-    iter = 0
+        ALFA = CONFIGS["MLP_ALFA"]
 
-    vEQM = []
-    vEQM.append(EQM)
+        # Feedfoward para a saida
+        Y = feed_forward(current_file, A, B, N)
+        error = Y - d
 
-    while EQM > 1.0e-5 and iter < ITER_MAX:
-        iter = iter + 1
-        dJdA, dJdB = gradient(X, d, A, B, N)
-        ALFA = bis_mlp(X, d, A, B, dJdA, dJdB, N)
+        dJdA, dJdB = gradient(current_file, d, A, B, N)
+        ALFA = bis_mlp(current_file, d, A, B, dJdA, dJdB, N)
         A = A - ALFA * dJdA
         B = B - ALFA * dJdB
-        Y = feed_forward(X, A, B, N)
-        error = Y - d
-        EQM = (1. / N) * ((error * error).sum())
-        vEQM.append(EQM)
-    Y = feed_forward(X, A, B, N)
 
-    average_error.append(np.average(vEQM))
+        error_kfold.append(error)
 
-    CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS, save_disk)
+    # CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS, save_disk)
 
-    print("Y: {}".format(np.argmax(Y)))
-    print("D: {}\n".format(d))
+    # print("Y: {}".format(np.argmax(Y)))
+    # print("D: {}\n".format(d))
 
-    return CONFIGS, average_error
+    return CONFIGS, np.average(error_kfold)
 
 
 def save_train(path, A, B, average_error, CONFIGS, save_disk):
@@ -313,38 +328,42 @@ def save_train(path, A, B, average_error, CONFIGS, save_disk):
     return CONFIGS
 
 
-def test(file_name, url, average_error, CONFIGS, RUN, save_disk):
-    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
-    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
-    X = X.reshape(1, len(X))
+def test(group, url, all_files, CONFIGS, RUN, save_disk):
 
-    if "train_5a" in file_name:
-        d = np.array([CONFIGS["MLP_LETTER_Z"]])
-    elif "train_53" in file_name:
-        d = np.array([CONFIGS["MLP_LETTER_S"]])
-    elif "train_58" in file_name:
-        d = np.array([CONFIGS["MLP_LETTER_X"]])
+    error_kfold = []
 
-    N = np.shape(X)[0]
-    A = CONFIGS["MLP_A"]
-    B = CONFIGS["MLP_B"]
+    for file_name in group:
+        f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name], "r")
+        current_file = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name])
+        current_file = current_file.reshape(1, len(current_file))
 
-    # Feedfoward para a saida
-    Y = feed_forward(X, A, B, N)
-    error = Y - d
-    EQM = (1. / N) * ((error * error).sum())
+        if "train_5a" in all_files[file_name]:
+            d = np.array([CONFIGS["MLP_LETTER_Z"]])
+        elif "train_53" in all_files[file_name]:
+            d = np.array([CONFIGS["MLP_LETTER_S"]])
+        elif "train_58" in all_files[file_name]:
+            d = np.array([CONFIGS["MLP_LETTER_X"]])
 
-    vEQM = []
-    vEQM.append(EQM)
+        H = CONFIGS["MLP_H"]
+        N = np.shape(current_file)[0]
+        ne = CONFIGS["MLP_X_LENGTH"]
+        ns = CONFIGS["MLP_NS"]
 
-    average_error.append(np.average(vEQM))
+        A = CONFIGS["MLP_A"]
+        B = CONFIGS["MLP_B"]
 
-    if RUN == "TESTES":
-        CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS, save_disk)
+        # Feedfoward para a saida
+        Y = feed_forward(current_file, A, B, N)
+        error = Y - d
 
-    print("Y: {}".format(np.argmax(Y)))
-    print("D: {}\n".format(d))
-    return CONFIGS, average_error
+        error_kfold.append(error)
+
+    # if RUN == "TESTES":
+        # CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS, save_disk)
+
+    # print("Y: {}".format(np.argmax(Y)))
+    # print("D: {}\n".format(d))
+    return CONFIGS, np.average(error_kfold)
 
 
 def save_test(path, average_error, CONFIGS, save_disk):
@@ -406,6 +425,9 @@ if __name__ == '__main__':
             # Define configs
             CONFIGS = configs(url + "/config.txt")
 
+            # Define errors
+            # ERRORS = errors(url + "/error.txt")
+
             if RUN == "TREINAMENTO":
 
                 average_error = CONFIGS["MLP_AVERAGE_ERROR"]
@@ -415,19 +437,36 @@ if __name__ == '__main__':
 
                 X = os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower())
 
-                for train_group, test_group in kf.split(X):
+                iter = 0
 
-                    for train_index in train_group:
+                # EQM taxa de erro de um treinamento inteiro
+                error_max = 1
+                ITER_MAX = CONFIGS["MLP_ITER_MAX"]
+
+                while iter < ITER_MAX and error_max > 1.0e-3:
+                    train_error = []
+                    test_error = []
+                    for train_group, test_group in kf.split(X):
+
                         save_disk = bool(len(X) % 5 == 0)
-                        CONFIGS, average_error = train(X[train_index], url, average_error, CONFIGS, RUN, save_disk)
 
-                    for test_index in test_group:
-                        CONFIGS, average_error = test(X[test_index], url, average_error, CONFIGS, RUN, save_disk=False)
+                        CONFIGS, average_error = train(train_group, url, X, CONFIGS, RUN, save_disk)
 
-                    count = count + 1
+                        print(average_error)
+
+                        CONFIGS, valid_error = test(test_group, url, X, CONFIGS, RUN, save_disk)
+
+                        count = count + 1
+                        train_error.append(average_error)
+                        test_error.append(valid_error)
+
+                    error_max = np.average(test_error)
+                    iter = iter + 1
+
+                print(error_max)
 
                 # SAVE ALL
-                CONFIGS = save_train(url + "/config.txt", CONFIGS["MLP_A"], CONFIGS["MLP_B"], average_error, CONFIGS,
+                CONFIGS = save_train(url + "/config.txt", CONFIGS["MLP_A"], CONFIGS["MLP_B"], error_max, CONFIGS,
                                      True)
 
             elif RUN == "TESTES":
