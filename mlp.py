@@ -2,6 +2,7 @@
 
 import numpy as np
 from scipy.special import expit
+import os
 import matplotlib.pyplot as plt
 
 def feed_forward(x, a, b, n):
@@ -88,45 +89,81 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
 
 if __name__ == '__main__':
 
-    input = "/Users/administrador/Dropbox/EACH/IA/Clodoaldo/ia-photos-transform/PCP-16 CPB-8/sample/HOG_sample/train_5a_00001.txt"
-    #if input in os.environ:
-    X = np.loadtxt(input)
-    X = X.reshape(1, len(X))
-    d = np.array([[0, 1, 0]])
-    aux = np.shape(X)
-    h = 3
-    N = aux[0]
-    ne = aux[1]
-    aux = np.shape(d)
-    ns = aux[1]
+    # input = "/Users/administrador/Dropbox/EACH/IA/Clodoaldo/ia-photos-transform/PCP-16 CPB-8/sample/HOG_sample/train_5a_00001.txt"
 
-    A = np.random.rand(h, (ne + 1))
-    B = np.random.rand(ns, (h + 1))
+    url_dataset = "dataset/"
+    url_test = "testes/"
+    url_learning = "treinamento/"
+    url_sample = "sample/"
 
-    # Feedfoward para a saida
-    Y = feed_forward(X, A, B, N)
-    error = Y - d
-    EQM = (1. / N) * ((error * error).sum())
+    pixels_per_celL = 8
+    cells_per_block = 1
+    orientations = 9
+    run = ",,"
 
-    i = 0
-    alfa = 1
+    if "PIXELS_PER_CELL" in os.environ:
+        pixels_per_celL = int(os.environ["PIXELS_PER_CELL"])
 
-    vEQM = []
-    vEQM.append(EQM)
+    if "CELLS_PER_BLOCK" in os.environ:
+        cells_per_block = int(os.environ["CELLS_PER_BLOCK"])
 
-    while EQM > 1.0e-5 and i < 10000:
-        i = i + 1
-        dJdA, dJdB = gradient(X, d, A, B, N)
-        alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
-        A = A - alfa * dJdA
-        B = B - alfa * dJdB
-        Y = feed_forward(X, A, B, N)
-        error = Y - d
-        EQM = (1. / N) * ((error * error).sum())
-        vEQM.append(EQM)
-    Y = feed_forward(X, A, B, N)
-    print(Y)
+    if "ORIENTATIONS" in os.environ:
+        orientations = int(os.environ["ORIENTATIONS"])
 
-    print(vEQM)
+    if "RUN" in os.environ:
+        run = os.environ["RUN"]
 
-    print(np.argmax(Y))
+    run = run.split(",")
+
+    url_result = "build/PCP-" + repr(pixels_per_celL) + "-CPB-" + repr(cells_per_block) + "/"
+
+    for layer in run:
+        # Set path
+        os.chdir(url_result + layer.lower() + "/HOG_" + layer.lower())
+
+        for file_name in os.listdir("."):
+            f = open(file_name, 'r')
+            X = np.loadtxt(file_name)
+            # X = [map(float, line.split(',')) for line in f]
+
+            #if input in os.environ:
+            # X = np.loadtxt(input)
+            X = X.reshape(1, len(X))
+            d = np.array([[0, 1, 0]])
+            aux = np.shape(X)
+            h = 3
+            N = aux[0]
+            ne = aux[1]
+            aux = np.shape(d)
+            ns = aux[1]
+
+            A = np.random.rand(h, (ne + 1))
+            B = np.random.rand(ns, (h + 1))
+
+            # Feedfoward para a saida
+            Y = feed_forward(X, A, B, N)
+            error = Y - d
+            EQM = (1. / N) * ((error * error).sum())
+
+            i = 0
+            alfa = 1
+
+            vEQM = []
+            vEQM.append(EQM)
+
+            while EQM > 1.0e-5 and i < 10000:
+                i = i + 1
+                dJdA, dJdB = gradient(X, d, A, B, N)
+                alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
+                A = A - alfa * dJdA
+                B = B - alfa * dJdB
+                Y = feed_forward(X, A, B, N)
+                error = Y - d
+                EQM = (1. / N) * ((error * error).sum())
+                vEQM.append(EQM)
+            Y = feed_forward(X, A, B, N)
+            print(Y)
+
+            print(vEQM)
+
+            print(np.argmax(Y))
