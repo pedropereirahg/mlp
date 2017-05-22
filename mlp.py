@@ -121,12 +121,21 @@ def configs(path):
 
     # Set AVERAGE_ERROR default
     if "MLP_AVERAGE_ERROR" in configs:
-        configs["MLP_AVERAGE_ERROR"] = map(int, configs["MLP_AVERAGE_ERROR"].split(","))
+        configs["MLP_AVERAGE_ERROR"] = map(float, configs["MLP_AVERAGE_ERROR"].split(","))
     else:
         f = open(path, 'a')
         f.write("MLP_AVERAGE_ERROR : %s\n" % ",".join(map(str, average_error)))
         f.close()
         configs["MLP_AVERAGE_ERROR"] = average_error
+
+    # Set AVERAGE_ERROR_TEST default
+    if "MLP_AVERAGE_ERROR_TEST" in configs:
+        configs["MLP_AVERAGE_ERROR_TEST"] = map(float, configs["MLP_AVERAGE_ERROR_TEST"].split(","))
+    else:
+        f = open(path, 'a')
+        f.write("MLP_AVERAGE_ERROR_TEST : %s\n" % ",".join(map(str, average_error)))
+        f.close()
+        configs["MLP_AVERAGE_ERROR_TEST"] = average_error
 
     return configs
 
@@ -213,7 +222,7 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
     return alfa
 
 
-def save(path, A, B, average_error, CONFIGS):
+def save_train(path, A, B, average_error, CONFIGS):
     fr = open(path, "r")
 
     line = fr.readline()
@@ -242,6 +251,27 @@ def save(path, A, B, average_error, CONFIGS):
     CONFIGS["MLP_A"] = A
     CONFIGS["MLP_B"] = B
     CONFIGS["MLP_AVERAGE_ERROR"] = average_error
+    return CONFIGS
+
+def save_test(path, average_error, CONFIGS):
+    fr = open(path, "r")
+
+    line = fr.readline()
+    lines = []
+    while line:
+        if "MLP_AVERAGE_ERROR_TEST : " in line:
+            line = line.split(" : ")
+            line[1] = ("%s\n" % ",".join(map(str, average_error)))
+            line = " : ".join("%s" % str(x) for x in line)
+        lines.append(line)
+        line = fr.readline()
+    fr.close()
+
+    fw = open(path, "w")
+    fw.writelines(lines)
+    fw.close()
+
+    CONFIGS["MLP_AVERAGE_ERROR_TEST"] = average_error
     return CONFIGS
 
 if __name__ == '__main__':
@@ -278,18 +308,23 @@ if __name__ == '__main__':
             # Define configs
             CONFIGS = configs(url + RUN.lower() + "/config.txt")
 
-            average_error = CONFIGS["MLP_AVERAGE_ERROR"]
+            if RUN == "TREINAMENTO":  # CROSS VALIDATION DO IT!!!!
 
-            if RUN == "TREINAMENTO":  # CROSS VALIDATION
+                average_error = CONFIGS["MLP_AVERAGE_ERROR"]
 
                 kf = KFold(n_splits=5)
 
                 path_train = url + "treinamento/HOG_treinamento"
                 path_tests = url + "testes/HOG_testes"
 
+                count = 0
+
                 # for train_file, test_file in kf.split(os.listdir(path_train) + os.listdir(path_tests)):
                 # for train_file, test_file in kf.split(os.listdir(path_train)):
                 for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
+                    if count == 5:
+                        break
+
                     f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
                     X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
                     X = X.reshape(1, len(X))
@@ -336,9 +371,53 @@ if __name__ == '__main__':
 
                     average_error.append(np.average(vEQM))
 
-                    CONFIGS = save(url + RUN.lower() + "/config.txt", A, B, average_error, CONFIGS)
+                    CONFIGS = save_train(url + RUN.lower() + "/config.txt", A, B, average_error, CONFIGS)
 
                     print("Y: {}".format(np.argmax(Y)))
                     print("D: {}\n".format(d))
 
-            # elif RUN == "TESTES":
+                    count = count + 1
+
+            elif RUN == "TESTES":
+
+                average_error = CONFIGS["MLP_AVERAGE_ERROR_TEST"]
+
+                count = 0
+
+                for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
+                    if count == 5:
+                        break
+
+                    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
+                    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
+                    X = X.reshape(1, len(X))
+
+                    if "train_5a" in file_name:
+                        d = np.array([CONFIGS["MLP_LETTER_Z"]])
+                    elif "train_53" in file_name:
+                        d = np.array([CONFIGS["MLP_LETTER_S"]])
+                    elif "train_58" in file_name:
+                        d = np.array([CONFIGS["MLP_LETTER_X"]])
+
+                    N = np.shape(X)[0]
+                    A = CONFIGS["MLP_A"]
+                    B = CONFIGS["MLP_B"]
+
+                    # Feedfoward para a saida
+                    Y = feed_forward(X, A, B, N)
+                    error = Y - d
+                    EQM = (1. / N) * ((error * error).sum())
+
+                    vEQM = []
+                    vEQM.append(EQM)
+
+                    average_error.append(np.average(vEQM))
+
+                    # CONFIGS = save(url + RUN.lower() + "/config.txt", A, B, average_error, CONFIGS)
+
+                    CONFIGS = save_test(url + RUN.lower() + "/config.txt", average_error, CONFIGS)
+
+                    print("Y: {}".format(np.argmax(Y)))
+                    print("D: {}\n".format(d))
+
+                    count = count + 1
