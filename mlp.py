@@ -89,8 +89,6 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
 
 if __name__ == '__main__':
 
-    # input = "/Users/administrador/Dropbox/EACH/IA/Clodoaldo/ia-photos-transform/PCP-16 CPB-8/sample/HOG_sample/train_5a_00001.txt"
-
     url_dataset = "dataset/"
     url_test = "testes/"
     url_learning = "treinamento/"
@@ -124,12 +122,15 @@ if __name__ == '__main__':
         for file_name in os.listdir("."):
             f = open(file_name, 'r')
             X = np.loadtxt(file_name)
-            # X = [map(float, line.split(',')) for line in f]
-
-            #if input in os.environ:
-            # X = np.loadtxt(input)
             X = X.reshape(1, len(X))
-            d = np.array([[0, 1, 0]])
+
+            if "train_5a" in file_name:
+                d = np.array([[0, 1, 0]])  # Z
+            elif "train_53" in file_name:
+                d = np.array([[0, 0, 1]])  # S
+            elif "train_58" in file_name:
+                d = np.array([[1, 0, 0]])  # X
+
             aux = np.shape(X)
             h = 3
             N = aux[0]
@@ -162,8 +163,6 @@ if __name__ == '__main__':
                 EQM = (1. / N) * ((error * error).sum())
                 vEQM.append(EQM)
             Y = feed_forward(X, A, B, N)
-            print(Y)
 
-            print(vEQM)
-
-            print(np.argmax(Y))
+            print("Y: {}".format(np.argmax(Y)))
+            print("D: {}\n".format(d))

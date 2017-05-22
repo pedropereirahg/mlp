@@ -19,6 +19,4 @@ RUN cp -R /hog/build/ build/
 RUN pip install -U pip setuptools
 RUN pip install -r requirements.txt
 
-
-
 CMD ["python", "mlp.py"]
