@@ -222,7 +222,7 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
     return alfa
 
 
-def train(file_name, url, average_error, CONFIGS, RUN):
+def train(file_name, url, average_error, CONFIGS, RUN, save_disk):
     f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
     X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
     X = X.reshape(1, len(X))
@@ -269,14 +269,23 @@ def train(file_name, url, average_error, CONFIGS, RUN):
 
     average_error.append(np.average(vEQM))
 
-    CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS)
+    CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS, save_disk)
 
     print("Y: {}".format(np.argmax(Y)))
     print("D: {}\n".format(d))
 
     return CONFIGS, average_error
 
-def save_train(path, A, B, average_error, CONFIGS):
+
+def save_train(path, A, B, average_error, CONFIGS, save_disk):
+
+    CONFIGS["MLP_A"] = A
+    CONFIGS["MLP_B"] = B
+    CONFIGS["MLP_AVERAGE_ERROR"] = average_error
+
+    if not save_disk:
+        return CONFIGS
+
     fr = open(path, "r")
 
     line = fr.readline()
@@ -301,14 +310,10 @@ def save_train(path, A, B, average_error, CONFIGS):
     fw = open(path, "w")
     fw.writelines(lines)
     fw.close()
-
-    CONFIGS["MLP_A"] = A
-    CONFIGS["MLP_B"] = B
-    CONFIGS["MLP_AVERAGE_ERROR"] = average_error
     return CONFIGS
 
 
-def test(file_name, url, average_error, CONFIGS, RUN, save):
+def test(file_name, url, average_error, CONFIGS, RUN, save_disk):
     f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
     X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
     X = X.reshape(1, len(X))
@@ -334,15 +339,20 @@ def test(file_name, url, average_error, CONFIGS, RUN, save):
 
     average_error.append(np.average(vEQM))
 
-    if save:
-        CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS)
+    if RUN == "TESTES":
+        CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS, save_disk)
 
     print("Y: {}".format(np.argmax(Y)))
     print("D: {}\n".format(d))
     return CONFIGS, average_error
 
 
-def save_test(path, average_error, CONFIGS):
+def save_test(path, average_error, CONFIGS, save_disk):
+    CONFIGS["MLP_AVERAGE_ERROR_TEST"] = average_error
+
+    if not save_disk:
+        return CONFIGS
+
     fr = open(path, "r")
 
     line = fr.readline()
@@ -359,8 +369,6 @@ def save_test(path, average_error, CONFIGS):
     fw = open(path, "w")
     fw.writelines(lines)
     fw.close()
-
-    CONFIGS["MLP_AVERAGE_ERROR_TEST"] = average_error
     return CONFIGS
 
 
@@ -401,23 +409,37 @@ if __name__ == '__main__':
             if RUN == "TREINAMENTO":
 
                 average_error = CONFIGS["MLP_AVERAGE_ERROR"]
+                count = 0
 
                 kf = KFold(n_splits=5)
 
                 X = os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower())
 
-                for train, test in kf.split(X):
+                for train_group, test_group in kf.split(X):
 
-                    for train_index in train:
-                        CONFIGS, average_error = train(X[train_index], url, average_error, CONFIGS, RUN)
+                    for train_index in train_group:
+                        save_disk = bool(len(X) % 5 == 0)
+                        CONFIGS, average_error = train(X[train_index], url, average_error, CONFIGS, RUN, save_disk)
 
-                    for test_index in test:
-                        CONFIGS, average_error = test(X[test_index], url, average_error, CONFIGS, RUN, False)
+                    for test_index in test_group:
+                        CONFIGS, average_error = test(X[test_index], url, average_error, CONFIGS, RUN, save_disk=False)
+
+                    count = count + 1
+
+                # SAVE ALL
+                CONFIGS = save_train(url + "/config.txt", CONFIGS["MLP_A"], CONFIGS["MLP_B"], average_error, CONFIGS,
+                                     True)
 
             elif RUN == "TESTES":
 
                 average_error = CONFIGS["MLP_AVERAGE_ERROR_TEST"]
+                count = 0
 
                 for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
 
-                    CONFIGS, average_error = test(file_name, url, average_error, CONFIGS, RUN, True)
+                    CONFIGS, average_error = test(file_name, url, average_error, CONFIGS, RUN, save_disk=True)
+
+                count = count + 1
+
+                # SAVE ALL
+                CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS, True)
