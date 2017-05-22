@@ -5,6 +5,63 @@ from scipy.special import expit
 import os
 import matplotlib.pyplot as plt
 
+
+def configs(path):
+    configs = {}
+
+    # defaults
+    mlp_h = 3
+    mlp_letter_z = [0, 1, 0]
+    mlp_letter_s = [0, 1, 0]
+    mlp_letter_x = [1, 0, 0]
+
+    f = open(path, 'r')
+    lines = f.read()
+    lines = lines.split("\n")
+    for line in lines:
+        if not line:
+            continue
+        p = line.split(" : ")
+        if "HOG" in p[0] or "LENGTH" in p[0]:
+            configs[p[0]] = int(p[1])
+        else:
+            configs[p[0]] = p[1]
+    f.close()
+
+    # Set H default
+    if configs["MLP_H"]:
+        configs["MLP_H"] = int(configs["MLP_H"])
+    else:
+        f = open(path, 'a')
+        f.write("MLP_H : %s\n" % str(mlp_h))
+        f.close()
+
+    # Set LETTER_Z default
+    if configs["MLP_LETTER_Z"]:
+        configs["MLP_LETTER_Z"] = map(int, configs["MLP_LETTER_Z"].split(","))
+    else:
+        f = open(path, 'a')
+        f.write("MLP_LETTER_Z : %s\n" % ",".join(map(str, mlp_letter_z)))
+        f.close()
+
+    # Set LETTER_S default
+    if configs["MLP_LETTER_S"]:
+        configs["MLP_LETTER_S"] = map(int, configs["MLP_LETTER_S"].split(","))
+    else:
+        f = open(path, 'a')
+        f.write("MLP_LETTER_S : %s\n" % ",".join(map(str, mlp_letter_s)))
+        f.close()
+
+    # Set LETTER_X default
+    if configs["MLP_LETTER_X"]:
+        configs["MLP_LETTER_X"] = map(int, configs["MLP_LETTER_X"].split(","))
+    else:
+        f = open(path, 'a')
+        f.write("MLP_LETTER_X : %s\n" % ",".join(map(str, mlp_letter_x)))
+        f.close()
+
+    return configs
+
 def feed_forward(x, a, b, n):
     z_in = np.dot((np.append(np.ones((n, 1)), x, 1)), (np.transpose(a)))
     z = expit(z_in)
@@ -89,87 +146,89 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
 
 if __name__ == '__main__':
 
-    url_dataset = "dataset/"
+    url_build = "build/"
     url_test = "testes/"
     url_learning = "treinamento/"
-    url_sample = "sample/"
 
-    pixels_per_celL = 8
-    cells_per_block = 1
-    orientations = 9
-    run = ",,"
+    FOLDER = ""
+    RUN = ""
 
-    if "PIXELS_PER_CELL" in os.environ:
-        pixels_per_celL = int(os.environ["PIXELS_PER_CELL"])
-
-    if "CELLS_PER_BLOCK" in os.environ:
-        cells_per_block = int(os.environ["CELLS_PER_BLOCK"])
-
-    if "ORIENTATIONS" in os.environ:
-        orientations = int(os.environ["ORIENTATIONS"])
+    if "FOLDER" in os.environ:
+        FOLDER = int(os.environ["FOLDER"])
 
     if "RUN" in os.environ:
-        run = os.environ["RUN"]
+        RUN = os.environ["RUN"]
 
-    run = run.split(",")
-
-    url_result = "build/PCP-" + repr(pixels_per_celL) + "-CPB-" + repr(cells_per_block) + "/"
-
-    for layer in run:
+    if RUN:
 
         # Set path
-        os.chdir(url_result + layer.lower() + "/HOG_" + layer.lower())
+        os.chdir(url_build)
+        for content in os.listdir("."):
 
-        # if layer == "TREINAMENTO":
-        #     X = ""  # CROSS VALIDATION
-        #
-        # elif layer == "TESTES":
-        #     X = ""
+            # Define baseline
+            url = url_build
+            if FOLDER:
+                url += FOLDER + "/"
+                if content != url:
+                    break
+            else:
+                url += content
 
-        for file_name in os.listdir("."):
-            f = open(file_name, 'r')
-            X = np.loadtxt(file_name)
-            X = X.reshape(1, len(X))
+            # Define configs
+            CONFIGS = configs(url + RUN.lower() + "/config.txt")
 
-            if "train_5a" in file_name:
-                d = np.array([[0, 1, 0]])  # Z
-            elif "train_53" in file_name:
-                d = np.array([[0, 0, 1]])  # S
-            elif "train_58" in file_name:
-                d = np.array([[1, 0, 0]])  # X
+            # N = np.shape(X)[0]
+            # ne = CONFIGS["MLP_X_LEN"]
+            # ns = np.shape(d)[1]
 
-            aux = np.shape(X)
-            h = 3
-            N = aux[0]
-            ne = aux[1]
-            aux = np.shape(d)
-            ns = aux[1]
+            A = np.random.rand(H, (ne + 1))  # FIXAR
+            B = np.random.rand(ns, (H + 1))  # FIXAR
 
-            A = np.random.rand(h, (ne + 1))  # FIXAR
-            B = np.random.rand(ns, (h + 1))  # FIXAR
+            if RUN == "TREINAMENTO": # CROSS VALIDATION
 
-            # Feedfoward para a saida
-            Y = feed_forward(X, A, B, N)
-            error = Y - d
-            EQM = (1. / N) * ((error * error).sum())
+                for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
+                    X = np.loadtxt(file_name)
+                    X = X.reshape(1, len(X))
 
-            i = 0
-            alfa = 1
+                    if "train_5a" in file_name:
+                        d = np.array([CONFIGS["MLP_LETTER_Z"]])
+                    elif "train_53" in file_name:
+                        d = np.array([CONFIGS["MLP_LETTER_S"]])
+                    elif "train_58" in file_name:
+                        d = np.array([CONFIGS["MLP_LETTER_X"]])
 
-            vEQM = []
-            vEQM.append(EQM)
+                    H = CONFIGS["MLP_LETTER_Z"]
+                    N = np.shape(X)[0]
+                    ne = CONFIGS["MLP_X_LENGTH"]
+                    ns = np.shape(d)[1]
 
-            while EQM > 1.0e-5 and i < 10000:
-                i = i + 1
-                dJdA, dJdB = gradient(X, d, A, B, N)
-                alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
-                A = A - alfa * dJdA
-                B = B - alfa * dJdB
-                Y = feed_forward(X, A, B, N)
-                error = Y - d
-                EQM = (1. / N) * ((error * error).sum())
-                vEQM.append(EQM)
-            Y = feed_forward(X, A, B, N)
+                    A = np.random.rand(H, (ne + 1))  # FIXAR
+                    B = np.random.rand(ns, (H + 1))  # FIXAR
 
-            print("Y: {}".format(np.argmax(Y)))
-            print("D: {}\n".format(d))
+                    # Feedfoward para a saida
+                    Y = feed_forward(X, A, B, N)
+                    error = Y - d
+                    EQM = (1. / N) * ((error * error).sum())
+
+                    i = 0
+                    alfa = 1
+
+                    vEQM = []
+                    vEQM.append(EQM)
+
+                    while EQM > 1.0e-5 and i < 10000:
+                        i = i + 1
+                        dJdA, dJdB = gradient(X, d, A, B, N)
+                        alfa = bis_mlp(X, d, A, B, dJdA, dJdB, N)
+                        A = A - alfa * dJdA
+                        B = B - alfa * dJdB
+                        Y = feed_forward(X, A, B, N)
+                        error = Y - d
+                        EQM = (1. / N) * ((error * error).sum())
+                        vEQM.append(EQM)
+                    Y = feed_forward(X, A, B, N)
+
+                    print("Y: {}".format(np.argmax(Y)))
+                    print("D: {}\n".format(d))
+
+            # elif RUN == "TESTES":
