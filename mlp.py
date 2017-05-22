@@ -222,6 +222,60 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
     return alfa
 
 
+def train(file_name, url, average_error, CONFIGS, RUN):
+    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
+    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
+    X = X.reshape(1, len(X))
+
+    if "train_5a" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_Z"]])
+    elif "train_53" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_S"]])
+    elif "train_58" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_X"]])
+
+    H = CONFIGS["MLP_H"]
+    N = np.shape(X)[0]
+    ne = CONFIGS["MLP_X_LENGTH"]
+    ns = CONFIGS["MLP_NS"]
+
+    A = CONFIGS["MLP_A"]
+    B = CONFIGS["MLP_B"]
+
+    ITER_MAX = CONFIGS["MLP_ITER_MAX"]
+    ALFA = CONFIGS["MLP_ALFA"]
+
+    # Feedfoward para a saida
+    Y = feed_forward(X, A, B, N)
+    error = Y - d
+    EQM = (1. / N) * ((error * error).sum())
+
+    iter = 0
+
+    vEQM = []
+    vEQM.append(EQM)
+
+    while EQM > 1.0e-5 and iter < ITER_MAX:
+        iter = iter + 1
+        dJdA, dJdB = gradient(X, d, A, B, N)
+        ALFA = bis_mlp(X, d, A, B, dJdA, dJdB, N)
+        A = A - ALFA * dJdA
+        B = B - ALFA * dJdB
+        Y = feed_forward(X, A, B, N)
+        error = Y - d
+        EQM = (1. / N) * ((error * error).sum())
+        vEQM.append(EQM)
+    Y = feed_forward(X, A, B, N)
+
+    average_error.append(np.average(vEQM))
+
+    CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS)
+
+    print("Y: {}".format(np.argmax(Y)))
+    print("D: {}\n".format(d))
+
+    return CONFIGS, average_error
+
 def save_train(path, A, B, average_error, CONFIGS):
     fr = open(path, "r")
 
@@ -253,6 +307,41 @@ def save_train(path, A, B, average_error, CONFIGS):
     CONFIGS["MLP_AVERAGE_ERROR"] = average_error
     return CONFIGS
 
+
+def test(file_name, url, average_error, CONFIGS, RUN, save):
+    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
+    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
+    X = X.reshape(1, len(X))
+
+    if "train_5a" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_Z"]])
+    elif "train_53" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_S"]])
+    elif "train_58" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_X"]])
+
+    N = np.shape(X)[0]
+    A = CONFIGS["MLP_A"]
+    B = CONFIGS["MLP_B"]
+
+    # Feedfoward para a saida
+    Y = feed_forward(X, A, B, N)
+    error = Y - d
+    EQM = (1. / N) * ((error * error).sum())
+
+    vEQM = []
+    vEQM.append(EQM)
+
+    average_error.append(np.average(vEQM))
+
+    if save:
+        CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS)
+
+    print("Y: {}".format(np.argmax(Y)))
+    print("D: {}\n".format(d))
+    return CONFIGS, average_error
+
+
 def save_test(path, average_error, CONFIGS):
     fr = open(path, "r")
 
@@ -273,6 +362,7 @@ def save_test(path, average_error, CONFIGS):
 
     CONFIGS["MLP_AVERAGE_ERROR_TEST"] = average_error
     return CONFIGS
+
 
 if __name__ == '__main__':
 
@@ -308,114 +398,26 @@ if __name__ == '__main__':
             # Define configs
             CONFIGS = configs(url + "/config.txt")
 
-            if RUN == "TREINAMENTO":  # CROSS VALIDATION DO IT!!!!
+            if RUN == "TREINAMENTO":
 
                 average_error = CONFIGS["MLP_AVERAGE_ERROR"]
 
                 kf = KFold(n_splits=5)
 
-                path_train = url + "treinamento/HOG_treinamento"
-                path_tests = url + "testes/HOG_testes"
+                X = os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower())
 
-                count = 0
+                for train, test in kf.split(X):
 
-                # for train_file, test_file in kf.split(os.listdir(path_train) + os.listdir(path_tests)):
-                # for train_file, test_file in kf.split(os.listdir(path_train)):
-                for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
-                    if count == 5:
-                        break
+                    for train_index in train:
+                        CONFIGS, average_error = train(X[train_index], url, average_error, CONFIGS, RUN)
 
-                    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
-                    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
-                    X = X.reshape(1, len(X))
-
-                    if "train_5a" in file_name:
-                        d = np.array([CONFIGS["MLP_LETTER_Z"]])
-                    elif "train_53" in file_name:
-                        d = np.array([CONFIGS["MLP_LETTER_S"]])
-                    elif "train_58" in file_name:
-                        d = np.array([CONFIGS["MLP_LETTER_X"]])
-
-                    H = CONFIGS["MLP_H"]
-                    N = np.shape(X)[0]
-                    ne = CONFIGS["MLP_X_LENGTH"]
-                    ns = CONFIGS["MLP_NS"]
-
-                    A = CONFIGS["MLP_A"]
-                    B = CONFIGS["MLP_B"]
-
-                    ITER_MAX = CONFIGS["MLP_ITER_MAX"]
-                    ALFA = CONFIGS["MLP_ALFA"]
-
-                    # Feedfoward para a saida
-                    Y = feed_forward(X, A, B, N)
-                    error = Y - d
-                    EQM = (1. / N) * ((error * error).sum())
-
-                    iter = 0
-
-                    vEQM = []
-                    vEQM.append(EQM)
-
-                    while EQM > 1.0e-5 and iter < ITER_MAX:
-                        iter = iter + 1
-                        dJdA, dJdB = gradient(X, d, A, B, N)
-                        ALFA = bis_mlp(X, d, A, B, dJdA, dJdB, N)
-                        A = A - ALFA * dJdA
-                        B = B - ALFA * dJdB
-                        Y = feed_forward(X, A, B, N)
-                        error = Y - d
-                        EQM = (1. / N) * ((error * error).sum())
-                        vEQM.append(EQM)
-                    Y = feed_forward(X, A, B, N)
-
-                    average_error.append(np.average(vEQM))
-
-                    CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS)
-
-                    print("Y: {}".format(np.argmax(Y)))
-                    print("D: {}\n".format(d))
-
-                    count = count + 1
+                    for test_index in test:
+                        CONFIGS, average_error = test(X[test_index], url, average_error, CONFIGS, RUN, False)
 
             elif RUN == "TESTES":
 
                 average_error = CONFIGS["MLP_AVERAGE_ERROR_TEST"]
 
-                count = 0
-
                 for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
-                    if count == 5:
-                        break
 
-                    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
-                    X = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
-                    X = X.reshape(1, len(X))
-
-                    if "train_5a" in file_name:
-                        d = np.array([CONFIGS["MLP_LETTER_Z"]])
-                    elif "train_53" in file_name:
-                        d = np.array([CONFIGS["MLP_LETTER_S"]])
-                    elif "train_58" in file_name:
-                        d = np.array([CONFIGS["MLP_LETTER_X"]])
-
-                    N = np.shape(X)[0]
-                    A = CONFIGS["MLP_A"]
-                    B = CONFIGS["MLP_B"]
-
-                    # Feedfoward para a saida
-                    Y = feed_forward(X, A, B, N)
-                    error = Y - d
-                    EQM = (1. / N) * ((error * error).sum())
-
-                    vEQM = []
-                    vEQM.append(EQM)
-
-                    average_error.append(np.average(vEQM))
-
-                    CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS)
-
-                    print("Y: {}".format(np.argmax(Y)))
-                    print("D: {}\n".format(d))
-
-                    count = count + 1
+                    CONFIGS, average_error = test(file_name, url, average_error, CONFIGS, RUN, True)
