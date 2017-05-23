@@ -210,8 +210,8 @@ def train(group, url, all_files, CONFIGS, RUN):
     error_kfold = []
 
     for file_name in group:
-        f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name], "r")
-        current_file = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name])
+        f = open(url + RUN.lower() + "/descriptor_" + RUN.lower() + "/" + all_files[file_name], "r")
+        current_file = np.loadtxt(url + RUN.lower() + "/descriptor_" + RUN.lower() + "/" + all_files[file_name])
         current_file = current_file.reshape(1, len(current_file))
 
         if "train_5a" in all_files[file_name]:
@@ -296,10 +296,22 @@ def save_error(path, average_error, RUN):
     fw.close()
 
 
-def test(file_name, url, CONFIGS, RUN):
+def test_train(group, url, all_files, CONFIGS, RUN):
 
-    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
-    current_file = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
+    error_kfold = []
+
+    for file_name in group:
+
+        error = test(all_files[file_name], url, CONFIGS, RUN)
+
+        error_kfold.append(error)
+
+    return CONFIGS, np.average(error_kfold)
+
+
+def test(file_name, url, CONFIGS, RUN):
+    f = open(url + RUN.lower() + "/descriptor_" + RUN.lower() + "/" + file_name, "r")
+    current_file = np.loadtxt(url + RUN.lower() + "/descriptor_" + RUN.lower() + "/" + file_name)
     current_file = current_file.reshape(1, len(current_file))
 
     if "train_5a" in file_name:
@@ -321,7 +333,7 @@ def test(file_name, url, CONFIGS, RUN):
     Y = feed_forward(current_file, A, B, N)
     error = Y - d
 
-    return CONFIGS, error
+    return error
 
 
 if __name__ == '__main__':
@@ -364,7 +376,7 @@ if __name__ == '__main__':
 
                 kf = KFold(n_splits=5)
 
-                X = os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower())
+                X = os.listdir(url + RUN.lower() + "/descriptor_" + RUN.lower())
 
                 iter = 0
 
@@ -379,11 +391,11 @@ if __name__ == '__main__':
 
                         save_disk = bool(len(X) % 5 == 0)
 
+                        # Train group k-fold
                         CONFIGS, average_error = train(train_group, url, X, CONFIGS, RUN)
 
-                        print(average_error)
-
-                        CONFIGS, valid_error = test(test_group, url, X, CONFIGS, RUN)
+                        # Test group k-fold
+                        CONFIGS, valid_error = test_train(test_group, url, X, CONFIGS, RUN)
 
                         train_error.append(average_error)
                         test_error.append(valid_error)
@@ -401,9 +413,10 @@ if __name__ == '__main__':
 
                 test_error = []
 
-                for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
-                    CONFIGS, average_error = test(file_name, url, CONFIGS, RUN)
-                    test_error.append(average_error)
+                for file_name in os.listdir(url + RUN.lower() + "/descriptor_" + RUN.lower()):
+
+                    error = test(file_name, url, CONFIGS, RUN)
+                    test_error.append(error)
 
                 # SAVE ALL
                 save_error(url + "/error.txt", np.average(test_error), RUN)
