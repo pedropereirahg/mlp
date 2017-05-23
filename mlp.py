@@ -6,30 +6,6 @@ from scipy.special import expit
 from sklearn.model_selection import KFold
 
 
-# def errors(path):
-#     errors = {}
-#
-#     # Set AVERAGE_ERROR default
-#     if "MLP_AVERAGE_ERROR" in configs:
-#         configs["MLP_AVERAGE_ERROR"] = map(float, configs["MLP_AVERAGE_ERROR"].split(","))
-#     else:
-#         f = open(path, 'a')
-#         f.write("MLP_AVERAGE_ERROR : %s\n" % ",".join(map(str, average_error)))
-#         f.close()
-#         configs["MLP_AVERAGE_ERROR"] = average_error
-#
-#     # Set AVERAGE_ERROR_TEST default
-#     if "MLP_AVERAGE_ERROR_TEST" in configs:
-#         configs["MLP_AVERAGE_ERROR_TEST"] = map(float, configs["MLP_AVERAGE_ERROR_TEST"].split(","))
-#     else:
-#         f = open(path, 'a')
-#         f.write("MLP_AVERAGE_ERROR_TEST : %s\n" % ",".join(map(str, average_error)))
-#         f.close()
-#         configs["MLP_AVERAGE_ERROR_TEST"] = average_error
-#
-#     return errors
-
-
 def configs(path):
     configs = {}
 
@@ -38,7 +14,7 @@ def configs(path):
     mlp_ns = 3
     # iter_max = 1000
     iter_max = 10
-    alfa = 0.9
+    alfa = 1
     mlp_letter_z = [0, 1, 0]
     mlp_letter_s = [0, 1, 0]
     mlp_letter_x = [1, 0, 0]
@@ -144,24 +120,6 @@ def configs(path):
         f.close()
         configs["MLP_B"] = mlp_b
 
-    # Set AVERAGE_ERROR default
-    if "MLP_AVERAGE_ERROR" in configs:
-        configs["MLP_AVERAGE_ERROR"] = map(float, configs["MLP_AVERAGE_ERROR"].split(","))
-    else:
-        f = open(path, 'a')
-        f.write("MLP_AVERAGE_ERROR : %s\n" % ",".join(map(str, average_error)))
-        f.close()
-        configs["MLP_AVERAGE_ERROR"] = average_error
-
-    # Set AVERAGE_ERROR_TEST default
-    if "MLP_AVERAGE_ERROR_TEST" in configs:
-        configs["MLP_AVERAGE_ERROR_TEST"] = map(float, configs["MLP_AVERAGE_ERROR_TEST"].split(","))
-    else:
-        f = open(path, 'a')
-        f.write("MLP_AVERAGE_ERROR_TEST : %s\n" % ",".join(map(str, average_error)))
-        f.close()
-        configs["MLP_AVERAGE_ERROR_TEST"] = average_error
-
     return configs
 
 
@@ -247,7 +205,7 @@ def bis_mlp(x, d, a, b, d_jd_a, d_jd_b, n):
     return alfa
 
 
-def train(group, url, all_files, CONFIGS, RUN, save_disk):
+def train(group, url, all_files, CONFIGS, RUN):
 
     error_kfold = []
 
@@ -284,22 +242,13 @@ def train(group, url, all_files, CONFIGS, RUN, save_disk):
 
         error_kfold.append(error)
 
-    # CONFIGS = save_train(url + "/config.txt", A, B, average_error, CONFIGS, save_disk)
-
-    # print("Y: {}".format(np.argmax(Y)))
-    # print("D: {}\n".format(d))
-
     return CONFIGS, np.average(error_kfold)
 
 
-def save_train(path, A, B, average_error, CONFIGS, save_disk):
+def save_train(path, A, B, CONFIGS):
 
     CONFIGS["MLP_A"] = A
     CONFIGS["MLP_B"] = B
-    CONFIGS["MLP_AVERAGE_ERROR"] = average_error
-
-    if not save_disk:
-        return CONFIGS
 
     fr = open(path, "r")
 
@@ -314,10 +263,6 @@ def save_train(path, A, B, average_error, CONFIGS, save_disk):
             line = line.split(" : ")
             line[1] = ("%s\n" % ';'.join(','.join('%f' % x for x in y) for y in B))
             line = " : ".join("%s" % str(x) for x in line)
-        elif "MLP_AVERAGE_ERROR : " in line:
-            line = line.split(" : ")
-            line[1] = ("%s\n" % ",".join(map(str, average_error)))
-            line = " : ".join("%s" % str(x) for x in line)
         lines.append(line)
         line = fr.readline()
     fr.close()
@@ -328,67 +273,55 @@ def save_train(path, A, B, average_error, CONFIGS, save_disk):
     return CONFIGS
 
 
-def test(group, url, all_files, CONFIGS, RUN, save_disk):
-
-    error_kfold = []
-
-    for file_name in group:
-        f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name], "r")
-        current_file = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + all_files[file_name])
-        current_file = current_file.reshape(1, len(current_file))
-
-        if "train_5a" in all_files[file_name]:
-            d = np.array([CONFIGS["MLP_LETTER_Z"]])
-        elif "train_53" in all_files[file_name]:
-            d = np.array([CONFIGS["MLP_LETTER_S"]])
-        elif "train_58" in all_files[file_name]:
-            d = np.array([CONFIGS["MLP_LETTER_X"]])
-
-        H = CONFIGS["MLP_H"]
-        N = np.shape(current_file)[0]
-        ne = CONFIGS["MLP_X_LENGTH"]
-        ns = CONFIGS["MLP_NS"]
-
-        A = CONFIGS["MLP_A"]
-        B = CONFIGS["MLP_B"]
-
-        # Feedfoward para a saida
-        Y = feed_forward(current_file, A, B, N)
-        error = Y - d
-
-        error_kfold.append(error)
-
-    # if RUN == "TESTES":
-        # CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS, save_disk)
-
-    # print("Y: {}".format(np.argmax(Y)))
-    # print("D: {}\n".format(d))
-    return CONFIGS, np.average(error_kfold)
-
-
-def save_test(path, average_error, CONFIGS, save_disk):
-    CONFIGS["MLP_AVERAGE_ERROR_TEST"] = average_error
-
-    if not save_disk:
-        return CONFIGS
+def save_error(path, average_error, RUN):
+    error = "MLP_AVERAGE_ERROR_" + RUN + " : "
 
     fr = open(path, "r")
-
     line = fr.readline()
     lines = []
     while line:
-        if "MLP_AVERAGE_ERROR_TEST : " in line:
+        if error in line:
             line = line.split(" : ")
-            line[1] = ("%s\n" % ",".join(map(str, average_error)))
+            line[1] = ("%f\n" % average_error)
             line = " : ".join("%s" % str(x) for x in line)
         lines.append(line)
         line = fr.readline()
     fr.close()
 
     fw = open(path, "w")
-    fw.writelines(lines)
+    if lines:
+        fw.writelines(lines)
+    else:
+        fw.write(error + str(average_error))
     fw.close()
-    return CONFIGS
+
+
+def test(file_name, url, CONFIGS, RUN):
+
+    f = open(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name, "r")
+    current_file = np.loadtxt(url + RUN.lower() + "/HOG_" + RUN.lower() + "/" + file_name)
+    current_file = current_file.reshape(1, len(current_file))
+
+    if "train_5a" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_Z"]])
+    elif "train_53" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_S"]])
+    elif "train_58" in file_name:
+        d = np.array([CONFIGS["MLP_LETTER_X"]])
+
+    H = CONFIGS["MLP_H"]
+    N = np.shape(current_file)[0]
+    ne = CONFIGS["MLP_X_LENGTH"]
+    ns = CONFIGS["MLP_NS"]
+
+    A = CONFIGS["MLP_A"]
+    B = CONFIGS["MLP_B"]
+
+    # Feedfoward para a saida
+    Y = feed_forward(current_file, A, B, N)
+    error = Y - d
+
+    return CONFIGS, error
 
 
 if __name__ == '__main__':
@@ -398,15 +331,17 @@ if __name__ == '__main__':
     url_learning = "treinamento/"
 
     FOLDER = ""
-    RUN = ""
+    LOOP = "TREINAMENTO,TESTES"
 
     if "FOLDER" in os.environ:
         FOLDER = os.environ["FOLDER"]
 
     if "RUN" in os.environ:
-        RUN = os.environ["RUN"]
+        LOOP = os.environ["RUN"]
 
-    if RUN:
+    LOOP = LOOP.split(",")
+
+    for RUN in LOOP:
 
         # Set path
         os.chdir(url_build)
@@ -425,13 +360,7 @@ if __name__ == '__main__':
             # Define configs
             CONFIGS = configs(url + "/config.txt")
 
-            # Define errors
-            # ERRORS = errors(url + "/error.txt")
-
             if RUN == "TREINAMENTO":
-
-                average_error = CONFIGS["MLP_AVERAGE_ERROR"]
-                count = 0
 
                 kf = KFold(n_splits=5)
 
@@ -450,13 +379,12 @@ if __name__ == '__main__':
 
                         save_disk = bool(len(X) % 5 == 0)
 
-                        CONFIGS, average_error = train(train_group, url, X, CONFIGS, RUN, save_disk)
+                        CONFIGS, average_error = train(train_group, url, X, CONFIGS, RUN)
 
                         print(average_error)
 
-                        CONFIGS, valid_error = test(test_group, url, X, CONFIGS, RUN, save_disk)
+                        CONFIGS, valid_error = test(test_group, url, X, CONFIGS, RUN)
 
-                        count = count + 1
                         train_error.append(average_error)
                         test_error.append(valid_error)
 
@@ -466,19 +394,16 @@ if __name__ == '__main__':
                 print(error_max)
 
                 # SAVE ALL
-                CONFIGS = save_train(url + "/config.txt", CONFIGS["MLP_A"], CONFIGS["MLP_B"], error_max, CONFIGS,
-                                     True)
+                CONFIGS = save_train(url + "/config.txt", CONFIGS["MLP_A"], CONFIGS["MLP_B"], CONFIGS)
+                save_error(url + "/error.txt", error_max, RUN)
 
             elif RUN == "TESTES":
 
-                average_error = CONFIGS["MLP_AVERAGE_ERROR_TEST"]
-                count = 0
+                test_error = []
 
                 for file_name in os.listdir(url + RUN.lower() + "/HOG_" + RUN.lower()):
-
-                    CONFIGS, average_error = test(file_name, url, average_error, CONFIGS, RUN, save_disk=True)
-
-                count = count + 1
+                    CONFIGS, average_error = test(file_name, url, CONFIGS, RUN)
+                    test_error.append(average_error)
 
                 # SAVE ALL
-                CONFIGS = save_test(url + "/config.txt", average_error, CONFIGS, True)
+                save_error(url + "/error.txt", np.average(test_error), RUN)
