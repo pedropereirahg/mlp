@@ -1,4 +1,4 @@
-#http://mathesaurus.sourceforge.net/matlab-python-xref.pdf
+# http://mathesaurus.sourceforge.net/matlab-python-xref.pdf
 
 import numpy as np
 import random
@@ -44,46 +44,46 @@ def bis_mlp(X,d,A,B,dJdA,dJdB,N):
     dir = vetor_concat(-dJdA,-dJdB)
     
     alfa_l = 0
-    alfa_u = np.random.uniform(0,1,1)
-    
-    Aaux = A - alfa_u*dJdA
-    Baux = B - alfa_u*dJdB
-    dJdAaux,dJdBaux = gradiente(X,d,Aaux,Baux,N)
+    alfa_u = np.random.uniform(0, 1, 1)
 
-    g = vetor_concat(dJdAaux,dJdBaux)
-    hl = np.dot(np.transpose(g),dir)
-    
-    while (hl<0):
-        alfa_u = 2*alfa_u
-        Aaux = A - alfa_u*dJdA;
-        Baux = B - alfa_u*dJdB;
-        dJdAaux,dJdBaux = gradiente(X,d,Aaux,Baux,N)
-        g = vetor_concat(dJdAaux,dJdBaux)
-        hl = np.dot(np.transpose(g),dir)
+    Aaux = a - alfa_u * d_jd_a
+    Baux = b - alfa_u * d_jd_b
+    dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
 
-    alfa_m = (alfa_l + alfa_u)/2
-    Aaux = A - alfa_u*dJdA;
-    Baux = B - alfa_u*dJdB;
-    dJdAaux,dJdBaux = gradiente(X,d,Aaux,Baux,N)
+    g = vet_concat(dJdAaux, dJdBaux)
+    hl = np.dot(np.transpose(g), dir)
 
-    g = vetor_concat(dJdAaux,dJdBaux)
-    hl = np.dot(np.transpose(g),dir)
-    
+    while (hl < 0):
+        alfa_u = 2 * alfa_u
+        Aaux = a - alfa_u * d_jd_a;
+        Baux = b - alfa_u * d_jd_b;
+        dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
+        g = vet_concat(dJdAaux, dJdBaux)
+        hl = np.dot(np.transpose(g), dir)
+
+    alfa_m = (alfa_l + alfa_u) / 2
+    Aaux = a - alfa_u * d_jd_a;
+    Baux = b - alfa_u * d_jd_b;
+    dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
+
+    g = vet_concat(dJdAaux, dJdBaux)
+    hl = np.dot(np.transpose(g), dir)
+
     nit = 0;
-    nitmax = np.ceil(np.log((alfa_u-alfa_l)/1.0e-5))
-    
-    while (nit < nitmax and abs(hl)>1.0e-5):
-        nit = nit +1
-        if (hl>0):
+    nitmax = np.ceil(np.log((alfa_u - alfa_l) / 1.0e-5))
+
+    while (nit < nitmax and abs(hl) > 1.0e-5):
+        nit = nit + 1
+        if (hl > 0):
             alfa_u = alfa_m
         else:
             alfa_l = alfa_m
-        alfa_m = (alfa_l+alfa_u)/2;
-        Aaux = A - alfa_m*dJdA;
-        Baux = B - alfa_m*dJdB;   
-        dJdAaux,dJdBaux = gradiente(X,d,Aaux,Baux,N)
-        g = vetor_concat(dJdAaux,dJdBaux)
-        hl = np.dot(np.transpose(g),dir)
+        alfa_m = (alfa_l + alfa_u) / 2;
+        Aaux = a - alfa_m * d_jd_a;
+        Baux = b - alfa_m * d_jd_b;
+        dJdAaux, dJdBaux = gradient(x, d, Aaux, Baux, n)
+        g = vet_concat(dJdAaux, dJdBaux)
+        hl = np.dot(np.transpose(g), dir)
     alfa = alfa_m
     return alfa
 
