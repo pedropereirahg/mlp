@@ -23,4 +23,5 @@ octave-workspace
 
 .idea/
 
-# build/
+build/
+images/
