@@ -1,4 +1,4 @@
-function ep()
+function main()
 
     path = 'images/*.txt';
     files = dir(path);
