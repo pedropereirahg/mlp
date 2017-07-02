@@ -1,9 +1,0 @@
-function Y = testarRede(X,A,B)
-%Zin = A*X;
-[N,ne] = size(X);
-X = [ones(N,1),X];
-Zin = X*A';
-Z = 1./(1+exp(-Zin)); %Z(N,nh)
-Yin = B*[ones(size(Z,1),1),Z]';
-Y = Yin;
-Y = (1./(1+exp(-Yin)))';

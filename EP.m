@@ -1,74 +1,79 @@
-function EP()
+function ep()
 
-X =[];
-Yd=[];
+    path = 'images/*.txt';
+    files = dir(path);
 
-files = dir('build/hog/ppc_32_cpb_1_o_9/images/*.txt');
-%files = dir('images/*.txt');
+    X = cell(size(files));
+    Yd = [];
+    nh = 5;
+    nkFold = 5;
 
-for file = files'
-    X = [X;load(file.name)'];
-    %file.name
-    if ~isempty(findstr(file.name,'train_5a_')) %Letra X
-        Yd = [Yd;[0,0,1]];
+    i = 1;
+
+    for file = files'
+        X{i} = load([file.folder '\' file.name])';
+
+        if ~isempty(strfind(file.name, 'train_5a_')) %Letra X
+            Yd = [Yd;[0,0,1]];
+        end
+        if ~isempty(strfind(file.name, 'train_53_')) %Letra S
+            Yd = [Yd;[0,1,0]];
+        end
+        if ~isempty(strfind(file.name, 'train_58_')) %Letra Z
+            Yd = [Yd;[1,0,0]];
+        end
+
+        i = i + 1;
     end
-    if ~isempty(findstr(file.name,'train_53_')) %Letra S
-        Yd = [Yd;[0,1,0]];
+
+    X = cell2mat(X);
+
+    i = 1;
+
+    grupoPorFold = size(X,1)/nkFold;
+
+    Indices = 1:size(X,1);
+
+    Yacerto = cell(1, nkFold);
+
+    while i <= nkFold
+        c = randperm(size(Indices,2), grupoPorFold);  
+        [trainX, trainYd, testX, testYd] = kfold(X, Yd, Indices(c));
+
+        %SEM VALIDAR
+        %[A,B] = redeNeural(trainX,trainYd,10);
+
+        %VALIDANDO
+        [A,B] = mlp(trainX, trainYd, nh, grupoPorFold);
+
+        [Ntr,~] = size(testX);
+
+        %TESTANDO
+        [Yr,~] = feed_foward([ones(Ntr,1),testX], A, B);
+        Yacerto{i} = acerto(Yr,testYd);
+
+        %RESETRA PRO PROX FOLD
+        Indices(c) = [];
+        i = i+1;
     end
-    if ~isempty(findstr(file.name,'train_58_')) %Letra Z
-        Yd = [Yd;[1,0,0]];
-    end
+
+    letraYd = paraLetra(testYd);
+    letraYr = paraLetra(roundParaConf(Yr));
+    [C,order] = confusionmat(letraYd,letraYr);
+    C
+
+    %imagesc(C)
+    %colorbar;
+    %axis on;
+    
+    Yacerto = cell2mat(Yacerto);
+    
+    Yacerto
+    mean(Yacerto)
+
 end
 
-i = 0;
-k = 5;
-
-%Testar K-fold
-%X = [1,0,0,0,0;2,0,0,0,0;3,0,0,0,0; 4,0,0,0,0; 5,0,0,0,0];
-%Yd = [1,0,0;2,0,0;3,0,0;4,0,0;5,0,0];
-
-grupoPorFold = size(X,1)/k;
-
-Indices = [1:size(X,1)];
-
-Yacerto = [];
-
-while i < k
-    c=randperm(size(Indices,2),grupoPorFold);  
-    [trainX,trainYd,testX,testYd] = grupos(X,Yd,Indices(c));
-    
-    %SEM VALIDAR
-    %[A,B] = redeNeural(trainX,trainYd,10); #
-    
-    %VALIDANDO
-    [A,B] = redeNeuralValid(trainX,trainYd,10,grupoPorFold);
-    
-    [Ntr,~] = size(testX);
-    
-    %TESTANDO
-    [Yr,~] = test([ones(Ntr,1),testX],A,B);
-    Yacerto = [Yacerto,acerto(Yr,testYd)];
-    
-    %RESETRA PRO PROX FOLD
-    Indices(c) = [];
-    i = i+1;
-end
-
-letraYd = paraLetra(testYd);
-letraYr = paraLetra(roundParaConf(Yr));
-[C,order] = confusionmat(letraYd,letraYr);
-
-%imshow(C, [], 'InitialMagnification', 10000);
-%imagesc(C, [], 'InitialMagnification', 10000);
-imagesc(C)
-colorbar;
-axis on;
-
-mean(Yacerto)
-
-end
-
-function txAcerto=acerto(Yr,testYd)
+function txAcerto = acerto(Yr,testYd)
     Yr = round(Yr);
     Total = size(Yr,1);
     cont =0;
@@ -79,14 +84,4 @@ function txAcerto=acerto(Yr,testYd)
         end
     end
     txAcerto = (cont*100)/Total;
-end
-
-function [TRX,TRY,TSTX,TSTY]=grupos(X,Yd,c)
-    TSTX=X(c,:); 
-    TSTY=Yd(c,:);
-
-    TRX = X;
-    TRX(c,:)= [];
-    TRY = Yd;
-    TRY(c,:) = [];
 end
