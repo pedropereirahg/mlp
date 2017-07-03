@@ -1,4 +1,4 @@
-function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal)
+function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal, A, B)
     
     c = randperm(size(X,1), numVal); 
     [X, Yd, valX,valYd] = kfold(X, Yd, c);
@@ -6,9 +6,14 @@ function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal)
     [N,ne] = size(X);
     ns = size(Yd,2);
     X = [ones(N,1),X];
-
-    A = rands(nh,ne+1)/5;
-    B = rands(ns,nh+1)/5; 
+    
+    if ~exist('A', 'var')
+        A = rand(nh,ne+1)/5;
+    end
+    
+    if ~exist('B', 'var')
+        B = rand(ns,nh+1)/5;
+    end
 
     [Y,~] = feed_foward(X, A, B);
     erro = Y - Yd;
@@ -54,7 +59,6 @@ function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal)
         end
     end
 
-    plot(veterro);
     Yr = round(Yr);
     cont = 0;
     Total = size(Yr,1);

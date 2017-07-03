@@ -21,7 +21,11 @@ octave-workspace
 # Simulink autosave extension
 .autosave
 
+*.mat
+
 .idea/
 
 build/
-images/
+
+/data/*
+!/data/empty
