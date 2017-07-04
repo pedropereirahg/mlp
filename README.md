@@ -23,7 +23,7 @@ nkFold = 5
 
   The data files in the path must be *.txt* files with one number (a double) per row. Please notice that the *expectOutput* (variable) contains the output of your MLP. The output file contains the error calculation using a simple mean.
   
-  The expected outputs matrix is generated based on the file names. Taking as an example a problem P with three inputs {S, X, Z} in which P = {S, X, Z}. One of the solutions for the problem P is caracter S. Modeling this problem computationally, we can assume that the three inputs will be an ordered vector [S, X, Z]. Still, to be able to making calculations inside MLP network, we must convert that alphanumeric characters for numbers. For this problem, we choose to represent the letters with significant bits. Finally the character S can be represented by S = [1, 0, 0] array. Following the same logic, the X char would be X = [0, 1, 0] and Z = [0, 0, 1].
+  The expected outputs matrix is generated based on the file names. Taking as an example a problem P with three inputs {S, X, Z} in which P = {S, X, Z}. One of the solutions for the problem P is character S. Modeling this problem computationally, we can assume that the three inputs will be an ordered vector [S, X, Z]. Still, to be able to making calculations inside MLP network, we must convert that alphanumeric characters for numbers. For this problem, we choose to represent the letters with significant bits. Finally the character S can be represented by S = [1, 0, 0] array. Following the same logic, the X char would be X = [0, 1, 0] and Z = [0, 0, 1].
 
   | S | X | Z ||
   |---|---|---|--|
@@ -41,6 +41,15 @@ $ cd mlp
 $ docker build -t pedrogoncalvesk/mlp .
 $ docker run --rm -it -v $(pwd):/source pedrogoncalvesk/mlp
 octave:1> main('<input-file>', '<output-file>', [<verbose>])
+
+
+
+
+$ docker run --rm -it openmicroscopy/octave                   # Octave shell
+$ docker run --rm -it --entrypoint bash openmicroscopy/octave # Bash shell
+$ docker run --rm openmicroscopy/octave -h                    # Get octave help
+$ docker run --rm openmicroscopy/octave example1.m arg1       # Run the example file
+$ docker run --rm -v $(pwd):/source openmicroscopy/octave /source/myfile.m
 ```
 
 License

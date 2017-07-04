@@ -1,129 +1,94 @@
 function main(input, output, verbose)
     
-    % Prevent calls without args
-    if nargin == 2 && exist('input', 'var') && exist('output', 'var')
-    end
-        
+    % Prevent calls without args        
     if ~exist('input', 'var') || ~exist('output', 'var')
         return
     end
     
+    % Log for analysis performance
     if exist('verbose', 'var') && verbose == true
-        t = log();
+        log();
     end
     
-    [path, data, expectedOutput, nh, nkFold] = readInput(input);
+    [path, data, expecOutput, nh, nkFold] = readInput(input);
     
     % First, try run aplication with loaded data
     % The weights (A,B) will be loaded
     try
-        load(data); 
+        newPath = path;
+        newExpecOutput = expecOutput;
         
-        [Y, A, B, C] = runMLP(X, Yd, nh, nkFold, A, B);
+        load(data);
         
-        saveError(output, Y);
-        
-        if exist('verbose', 'var') && verbose == true
-            log(t);
+        if ~strcmp(newPath, path) || ~strcmp(newExpecOutput, expecOutput)
+            error('Input file has changed.');
         end
-        clear t  verbose  input  output;
-        
-        save(data);
-        return
     catch
-        % Continue
+        % Construct X and expectedOutput (Yd)
+        [X, Yd] = expectedOutput(expecOutput, path);
     end
-
-    expectedOutput = strsplit(expectedOutput, " ");
-    
-    % Check configurations
-    if (mod(size(expectedOutput, 2), 2) ~= 0)
-        return
-    end
-    
-    % Define mapping to generate output
-    map = cell(size(expectedOutput, 2)/2, 1);
-    
-    i = 1;
-    while i <= size(expectedOutput, 2)
-        map{round(i/2)} = {expectedOutput{i}, str2num(expectedOutput{i+1})};
-        i = i + 2;
-    end
-    
-    files = dir(path);
-
-    X = cell(size(files));
-    Yd = cell(size(files,1),1);
-    
-    i = 1;
-    for file = files'
-        X{i} = load([file.folder '\' file.name])';
-        
-        % Put filename on each output mapping
-        j = 1;
-        while j <= size(map,1)
-            map{j}{3} = file.name;
-            j = j + 1;
-        end
-        
-        YdAux = cellfun(@setupYd, map, 'UniformOutput', false);
-        YdAux = YdAux(~cellfun('isempty', YdAux));
-        Yd{i} = cell2mat(YdAux);
-
-        i = i + 1;
-    end
-    
-    X = cell2mat(X);
-    Yd = cell2mat(Yd);
     
     % Run the principal loop
-    [Y, A, B, C] = runMLP(X, Yd, nh, nkFold);
+    [Y, A, B, C, order,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold);
     
-    saveError(output, Y);
+    saveOutput(output, Y, C, order, vetErTrain, vetErVal, vetErTst);
     
     if exist('verbose', 'var') && verbose == true
-        log(t);
+        log(true);
     end
-    clear t  verbose  input  output;
+    clear verbose input output nh nkFold newPath newExpecOutput;
     
     save(data);
 end
 
-function [Y, A, B, C] = runMLP(X, Yd, nh, nkFold, ALoad, BLoad)
+function [Y, A, B, C, order,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold, ALoad, BLoad)
     
     Y = cell(1, nkFold);
     n = size(X,1);
     Indices = 1:n;
-    whos
     grupoPorFold = n/nkFold;
+    
+    vetErTst = [];
+    vetErTrain = [];
+    vetErVal = [];
     
     i = 1;
     while i <= nkFold
         c = randperm(size(Indices,2), grupoPorFold);  
         [trainX, trainYd, testX, testYd] = kfold(X, Yd, Indices(c));
         
+        % Training and validation group
         if exist('ALoad', 'var') && exist('BLoad', 'var')
-            [A,B] = mlp(trainX, trainYd, nh, grupoPorFold, ALoad, BLoad);
+            [A,B,erroTest,erroVal] = mlp(trainX, trainYd, nh, grupoPorFold, ALoad, BLoad);
         else
-            [A,B] = mlp(trainX, trainYd, nh, grupoPorFold);
+            [A,B,erroTest,erroVal] = mlp(trainX, trainYd, nh, grupoPorFold);
         end
-
+        
+        vetErTrain = [vetErTrain;erroTest];
+        vetErVal = [vetErVal;erroVal];
+        
         [Ntr,~] = size(testX);
 
-        %TESTANDO
+        % Test group
         [Yr,~] = feed_foward([ones(Ntr,1),testX], A, B);
+        erroTest = (Yr - testYd);
+        erroTest = sum(sum(erroTest.*erroTest))/Ntr;
+        vetErTst = [vetErTst;erroTest];
+        
         Y{i} = acerto(Yr, testYd);
 
-        %RESETRA PRO PROX FOLD
+        % Reset for the next group
         Indices(c) = [];
         i = i+1;
     end
-
+    
     letraYd = paraLetra(testYd);
     letraYr = paraLetra(roundParaConf(Yr));
-    [C,~] = confusionmat(letraYd, letraYr);
+    [C,order] = confusionmat(letraYd, letraYr);
     
     Y = cell2mat(Y);
+    Y = mean(Y);
+
 end
 
 function [path, data, expectedOutput, nh, nkFold] = readInput(input)
@@ -150,14 +115,32 @@ function [path, data, expectedOutput, nh, nkFold] = readInput(input)
     fclose(fid);
 end
 
-function saveError(output, Y)
+function saveOutput(output, Y, C, order, vetErTrain, vetErVal, vetErTst)
+    
+    fid = fopen(output,'a');
+    fprintf(fid, strcat("Generated at ", datestr(now, 'yyyy-mm-dd HH:MM:SS'), "\n\n"));
+    fclose(fid);
+    
+    saveMSEperFold(output, vetErTrain, vetErVal, vetErTst);
+    
     fid = fopen(output,'a');
     
-    for ii = 1:size(Y,1)
-        fprintf(fid,'%g\t',Y(ii,:));
+    fprintf(fid,'Average percentage of correct answers: %g\t',Y);
+    
+    fprintf(fid,'\n\nConfusion matrix\n\n');
+    fprintf(fid,'\t');
+    transorder = order';
+    fprintf(fid,'%c\t',transorder(1,:));
+    
+    for ii = 1:size(C,1)     
         fprintf(fid,'\n');
+        fprintf(fid,'%c\t',order(ii,:));
+        fprintf(fid,'%g\t',C(ii,:));
     end
     fclose(fid);
+    
+    saveAcuracy(output, C, order);
+    savePlot(output, vetErTrain, vetErVal, vetErTst);
 end
 
 function txAcerto = acerto(Yr,testYd)
@@ -166,28 +149,18 @@ function txAcerto = acerto(Yr,testYd)
     cont =0;
     for i =1: Total
         mi = testYd(i,:);
-        if mi == Yr(i,:);
+        if mi == Yr(i,:)
             cont = cont+1;
         end
     end
     txAcerto = (cont*100)/Total;
 end
 
-function Yd = setupYd(prop)
-    Yd = [];
-    if ~isempty(strfind(prop{3}, prop{1}))
-        Yd = [Yd; prop{2}];
-    end
-end
-
-function t = log(t)
-    if ~exist('t', 'var') 
-        t = datetime('now');
+function log(finished)
+    if ~exist('finished', 'var') || ~finished
+        tic();
         disp('Running mlp...');
     else
-        t1 = datetime('now');
-        
-        disp(strcat("Finished in ", string(between(t, t1))));
-        t = t1;
+        disp(strcat("Finished in ", string(toc())));
     end
 end

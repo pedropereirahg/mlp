@@ -1,4 +1,4 @@
-function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal, A, B)
+function [Amelhor,Bmelhor,TrnMed,ValMed] = mlp(X, Yd, nh, numVal, A, B)
     
     c = randperm(size(X,1), numVal); 
     [X, Yd, valX,valYd] = kfold(X, Yd, c);
@@ -31,7 +31,7 @@ function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal, A, B)
     erro1 = sum(sum(erro1.*erro1))/N;
     Amelhor = A;
     Bmelhor = B;
-
+    veterroval = [];
     while  nepocas < nepocasmax
         
         alfa = bissecao_mlp(X,Yd,A,B,gA,gB,N);
@@ -47,8 +47,8 @@ function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal, A, B)
         [Yval,~] = feed_foward([ones(Ntr,1),valX],A,B);
         erro2 = (Yval - valYd);
         erro2 = sum(sum(erro2.*erro2))/N;
-        
-        if (erro2 < erro1)
+        veterroval = [veterroval;erro2];
+        if (erro2 < erro1) 
             nepocas = 0;
             erro1 = erro2;
             Amelhor = A;
@@ -58,18 +58,12 @@ function [Amelhor,Bmelhor] = mlp(X, Yd, nh, numVal, A, B)
             nepocas = nepocas +1;
         end
     end
-
-    Yr = round(Yr);
-    cont = 0;
-    Total = size(Yr,1);
-    for i =1: Total
-       mi = Yd(i,1);
-       if mi == Yr(i,1)
-           cont = cont+1;
-       end
-    end
-
-    txAcerto = (cont*100)/Total;
-
+    TrnMed = mean(veterro);
+    ValMed = mean(veterroval);
+    
+    %plot(veterro);
+    %saveas(gcf,'erro_train.png')
+    %plot(veterroval);
+    %saveas(gcf,'erro_val.png')
 end
 
