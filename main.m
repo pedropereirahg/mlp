@@ -29,9 +29,9 @@ function main(input, output, verbose)
     end
     
     % Run the principal loop
-    [Y, A, B, C, order,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold);
+    [Y, A, B, Cvet, ordeVetr,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold);
     
-    saveOutput(output, Y, C, order, vetErTrain, vetErVal, vetErTst);
+    saveOutput(output, Y, Cvet, orderVet, vetErTrain, vetErVal, vetErTst);
     
     if exist('verbose', 'var') && verbose == true
         log(true);
@@ -41,7 +41,7 @@ function main(input, output, verbose)
     save(data);
 end
 
-function [Y, A, B, C, order,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold, ALoad, BLoad)
+function [Y, A, B, Cvet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold, ALoad, BLoad)
     
     Y = cell(1, nkFold);
     n = size(X,1);
@@ -51,6 +51,9 @@ function [Y, A, B, C, order,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nk
     vetErTst = [];
     vetErTrain = [];
     vetErVal = [];
+    
+    Cvet = []
+    orderVet = []
     
     i = 1;
     while i <= nkFold
@@ -75,6 +78,14 @@ function [Y, A, B, C, order,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nk
         erroTest = sum(sum(erroTest.*erroTest))/Ntr;
         vetErTst = [vetErTst;erroTest];
         
+        %Gera matriz de confusão por teste
+        letraYd = paraLetra(testYd);
+        letraYr = paraLetra(roundParaConf(Yr));
+        [C,order] = confusionmat(letraYd, letraYr);
+        
+        Cvet = [Cvet;Cvet]
+        orderVet = [ordervet;orderVet]
+        
         Y{i} = acerto(Yr, testYd);
 
         % Reset for the next group
@@ -82,9 +93,9 @@ function [Y, A, B, C, order,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nk
         i = i+1;
     end
     
-    letraYd = paraLetra(testYd);
-    letraYr = paraLetra(roundParaConf(Yr));
-    [C,order] = confusionmat(letraYd, letraYr);
+    %letraYd = paraLetra(testYd);
+    %letraYr = paraLetra(roundParaConf(Yr));
+    %[C,order] = confusionmat(letraYd, letraYr);
     
     Y = cell2mat(Y);
     Y = mean(Y);
@@ -115,7 +126,7 @@ function [path, data, expectedOutput, nh, nkFold] = readInput(input)
     fclose(fid);
 end
 
-function saveOutput(output, Y, C, order, vetErTrain, vetErVal, vetErTst)
+function saveOutput(output, Y, Cvet, orderVet, vetErTrain, vetErVal, vetErTst)
     
     fid = fopen(output,'a');
     fprintf(fid, strcat("Generated at ", datestr(now, 'yyyy-mm-dd HH:MM:SS'), "\n\n"));
@@ -127,6 +138,8 @@ function saveOutput(output, Y, C, order, vetErTrain, vetErVal, vetErTst)
     
     fprintf(fid,'Average percentage of correct answers: %g\t',Y);
     
+    %ADICIONAR UMA LAÇO NESSA LINHA, INDICANDO DE QUAL TESTE PEGAMOS A 
+    %MATRIZ DE CONFUSAO 
     fprintf(fid,'\n\nConfusion matrix\n\n');
     fprintf(fid,'\t');
     transorder = order';
