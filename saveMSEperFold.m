@@ -10,8 +10,7 @@ function saveMSEperFold(output,eqmTr,eqmVal,eqmTs)
         fprintf(fid,'%g;',eqmVal(i));
         fprintf(fid,'%g\t',eqmTs(i));
         fprintf(fid,'\n');
-    end    
-    fprintf(fid,'\n');
+    end
     
     fclose(fid);
 end
