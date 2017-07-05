@@ -15,7 +15,7 @@ function [X, Y, map] = expectedOutput(expecOutput, path)
         i = i + 2;
     end
     
-    files = dir(path);
+    files = dir([path '*.txt']);
 
     X = cell(size(files));
     Y = cell(size(files,1),1);
@@ -23,7 +23,7 @@ function [X, Y, map] = expectedOutput(expecOutput, path)
     
     i = 1;
     for file = files'
-        X{i} = load([file.folder '\' file.name])';
+        X{i} = load([path file.name])';
         
         % Put filename on each output mapping
         j = 1;

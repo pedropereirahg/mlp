@@ -1,5 +1,5 @@
 function main(input, output, verbose)
-    
+   
     % Prevent calls without args        
     if ~exist('input', 'var') || ~exist('output', 'var')
         return

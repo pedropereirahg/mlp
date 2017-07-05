@@ -1,4 +1,4 @@
-path = data/*.txt
+path = data/
 data = model.mat
 expectedOutput = _5a_ 0,0,1 _53_ 0,1,0 _58_ 1,0,0
 nh = 5
