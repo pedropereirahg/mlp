@@ -1,5 +1,5 @@
 path = data/*.txt
 data = model.mat
-expectedOutput = train_5a_ 0,0,1 train_53_ 0,1,0 train_58_ 1,0,0
+expectedOutput = _5a_ 0,0,1 _53_ 0,1,0 _58_ 1,0,0
 nh = 5
 nkFold = 5

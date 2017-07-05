@@ -24,13 +24,17 @@ function main(input, output, verbose)
             error('Input file has changed.');
         end
     catch
-        % Construct X and expectedOutput (Yd)
-        [X, Yd] = expectedOutput(expecOutput, path);
+        % Construct X and expectedOutput (Yd) and your alias for report
+        [X, Yd, map] = expectedOutput(expecOutput, path);
     end
     
     % Run the principal loop
-    [Y, A, B, Cvet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold);
-    
+    if exist('A', 'var') && exist('B', 'var')
+        [Y, A, B, Cvet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold, map, A, B);
+    else
+        [Y, A, B, Cvet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold, map);
+    end
+
     saveOutput(output, Y, Cvet, orderVet, vetErTrain, vetErVal, vetErTst);
     
     if exist('verbose', 'var') && verbose == true
@@ -41,7 +45,7 @@ function main(input, output, verbose)
     save(data);
 end
 
-function [Y, A, B, cVet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold, ALoad, BLoad)
+function [Y, A, B, cVet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, nh, nkFold, map, ALoad, BLoad)
     
     Y = cell(1, nkFold);
     n = size(X,1);
@@ -82,9 +86,9 @@ function [Y, A, B, cVet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, 
         Y{i} = acerto(Yr, testYd);
         
         % Generate confusion matrix per fold
-        letraYd = paraLetra(testYd);
-        letraYr = paraLetra(roundParaConf(Yr));
-        [C, order] = confusionmat(letraYd, letraYr);
+        answerYd = mapping(testYd, map);
+        answerYr = mapping(mat2int(Yr), map);
+        [C, order] = confusionmat(answerYd, answerYr);
         
         cVet{i} = C;
         orderVet{i} = order;
@@ -126,7 +130,7 @@ end
 function saveOutput(output, Y, Cvet, orderVet, vetErTrain, vetErVal, vetErTst)
     
     fid = fopen(output,'a');
-    fprintf(fid, strcat("Generated at ", datestr(now, 'yyyy-mm-dd HH:MM:SS'), "\n\n"));
+    fprintf(fid, strcat("Generated at\t", datestr(now, 'yyyy-mm-dd HH:MM:SS'), "\n\n"));
     fprintf(fid,'Average percentage of correct answers: %g\t', Y);
     fprintf(fid,'\n\n');
     fclose(fid);
@@ -156,6 +160,6 @@ function log(finished)
         tic();
         disp('Running mlp...');
     else
-        disp(strcat("Finished in ", string(toc())));
+        fprintf("Finished in %s\n", num2str(toc()));
     end
 end

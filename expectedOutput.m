@@ -1,9 +1,9 @@
-function [X, Y] = expectedOutput(expecOutput, path)
+function [X, Y, map] = expectedOutput(expecOutput, path)
     expecOutput = strsplit(expecOutput, " ");
     
     % Check configurations
-    if (mod(size(expecOutput, 2), 2) ~= 0)
-        return
+    if (mod(size(expecOutput, 2), 2) ~= 0) 
+        error("expectedOutput doesn't multiple of 2.")
     end
     
     % Define mapping to generate output
@@ -19,6 +19,7 @@ function [X, Y] = expectedOutput(expecOutput, path)
 
     X = cell(size(files));
     Y = cell(size(files,1),1);
+    mapCopy = map;
     
     i = 1;
     for file = files'
@@ -26,12 +27,12 @@ function [X, Y] = expectedOutput(expecOutput, path)
         
         % Put filename on each output mapping
         j = 1;
-        while j <= size(map,1)
-            map{j}{3} = file.name;
+        while j <= size(mapCopy,1)
+            mapCopy{j}{3} = file.name;
             j = j + 1;
         end
         
-        Yaux = cellfun(@setupExpectedOutput, map, 'UniformOutput', false);
+        Yaux = cellfun(@setupExpectedOutput, mapCopy, 'UniformOutput', false);
         Yaux = Yaux(~cellfun('isempty', Yaux));
         Y{i} = cell2mat(Yaux);
 
