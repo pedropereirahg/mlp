@@ -15,6 +15,15 @@ function [X, Y, map] = expectedOutput(expecOutput, path)
         i = i + 2;
     end
     
+    try
+        [X, Y] = readExpectedOutput();
+        X = cell2mat(X);
+        Y = cell2mat(Y);
+        return
+    catch
+        % continue...
+    end
+    
     files = dir([path '*.txt']);
 
     X = cell(size(files));
@@ -39,8 +48,28 @@ function [X, Y, map] = expectedOutput(expecOutput, path)
         i = i + 1;
     end
     
+    try
+        saveExpectedOutput(X,Y);
+    catch
+        % continue...
+    end
+    
     X = cell2mat(X);
     Y = cell2mat(Y);
+end
+
+function [X, Y] = readExpectedOutput()
+    X = readtable('expectedOutputX.txt','Delimiter',' ','ReadVariableNames',false);
+    X = table2cell(X);
+    Y = readtable('expectedOutputYd.txt','Delimiter',' ','ReadVariableNames',false);
+    Y = table2cell(Y);
+end
+
+function saveExpectedOutput(X,Y)
+    Tx = cell2table(X);
+    writetable(Tx,'expectedOutputX.txt','Delimiter',' ');
+    Ty = cell2table(Y);
+    writetable(Ty,'expectedOutputYd.txt','Delimiter',' ');
 end
 
 function Y = setupExpectedOutput(prop)
