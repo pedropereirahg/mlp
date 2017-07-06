@@ -50,7 +50,7 @@ function [Y, A, B, cVet, orderVet,vetErTrain,vetErVal,vetErTst] = runMLP(X, Yd, 
     Y = cell(1, nkFold);
     n = size(X,1);
     Indices = 1:n;
-    grupoPorFold = n/nkFold;
+    grupoPorFold = floor(n/nkFold);
     
     vetErTst = [];
     vetErTrain = [];
